@@ -17,6 +17,8 @@ See `RUN.md` for commands.
 ```bash
 npm ci
 npm run map:batch
+npm run map:review
 ```
 
 Batch map artifacts are written to `qa_runs/` (untracked), under `qa_runs/map_seed_batch/`.
+`map:review` runs the batch generator and then opens the gallery HTML when possible (otherwise it prints the absolute path).
