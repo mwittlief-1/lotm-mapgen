@@ -5,7 +5,7 @@
  * Usage:
  *   npm run map:batch -- --config=data/map/map_v1_config.json \
  *     --seeds=qa_artifacts/map_seed_batch/seeds_styles_ABC_v0_1.json \
- *     --out=qa_artifacts/map_seed_batch
+ *     --out=qa_runs/map_seed_batch
  */
 
 import fs from "node:fs";
@@ -36,7 +36,7 @@ function runNodeScript(scriptRel, args) {
 const args = parseArgs(process.argv.slice(2));
 const configPath = String(args.config ?? "data/map/map_v1_config.json");
 const seedsFile = String(args.seeds ?? "qa_artifacts/map_seed_batch/seeds_styles_ABC_v0_1.json");
-const outRoot = String(args.out ?? "qa_artifacts/map_seed_batch");
+const outRoot = String(args.out ?? "qa_runs/map_seed_batch");
 
 assert(fs.existsSync(configPath), `config not found: ${configPath}`);
 assert(fs.existsSync(seedsFile), `seeds file not found: ${seedsFile}`);
