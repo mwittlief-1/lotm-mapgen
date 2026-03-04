@@ -1,0 +1,13 @@
+# DISPATCH — UX Writer (v0.2.5) [copy/paste]
+Please deliver binding UX docs:
+- docs/ux/v0.2.5_copy.md
+- docs/ux/v0.2.5_info_hierarchy.md
+
+Include copy for:
+- Population semantics (population = labor pool) and idle consumption explanation
+- Marriage residence messaging (daughters marry out; sons marry in) as simple labels/tooltips
+- Consumption label unit consistency (“this turn (3y)”)
+- Population change reasons (deaths vs runaways) in turn summary/log
+Nice-to-have: obligation input polish labels
+
+Deliver as `ux_docs_v0.2.5.zip`.

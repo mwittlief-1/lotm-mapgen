@@ -1,0 +1,34 @@
+[
+  {
+    "seed": "lotm_v007_001_baseline",
+    "note": "Baseline equilibrium; sanity check across policies."
+  },
+  {
+    "seed": "lotm_v007_002_temptation_build",
+    "note": "Builder-forward stress; early construction pressure."
+  },
+  {
+    "seed": "lotm_v007_003_weather_swing",
+    "note": "Weather volatility; yield risk and buffer management."
+  },
+  {
+    "seed": "lotm_v007_004_market_tight",
+    "note": "Low price / sell-cap squeeze; obligations pinch."
+  },
+  {
+    "seed": "lotm_v007_005_obligations_spike",
+    "note": "Taxes/tithes timing pressure; arrears risk."
+  },
+  {
+    "seed": "lotm_v007_006_security_losses",
+    "note": "Banditry/theft chain; watch & ward value."
+  },
+  {
+    "seed": "lotm_v007_007_household_risk",
+    "note": "Household illness/death pressure; succession risk."
+  },
+  {
+    "seed": "lotm_v007_008_unrest_chain",
+    "note": "Unrest escalation path; dispossession threshold clarity."
+  }
+]

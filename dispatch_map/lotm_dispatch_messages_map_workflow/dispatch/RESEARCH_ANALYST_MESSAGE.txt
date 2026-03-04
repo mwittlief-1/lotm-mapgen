@@ -1,0 +1,16 @@
+Research Analyst — Map v1 Metadata (rails only, no mechanics)
+
+Objective
+- Provide a minimal set of historically-plausible region tags and descriptors that can inform presentation (shading/labels) without affecting sim.
+
+Deliverables
+1) docs/research/map_v1_metadata_rails.md (1 page)
+- Recommended metadata fields and allowed values:
+  - region (north/central/south/etc.)
+  - rain_band (dry/temperate/wet)
+  - soil_band (light/medium/heavy)
+- For each field: 1–2 sentence rationale and a citation where possible.
+
+Constraints
+- No tuning. No sim coupling.
+- Metadata is UI-only until Workpad+Lock later.

@@ -1,0 +1,281 @@
+{
+  "version": "mvp_v0_1",
+  "app_version": "v0.1.0",
+  "run_seed": "fixture_migration_v010",
+  "turn_index": 0,
+  "manor": {
+    "population": 45,
+    "farmers": 28,
+    "builders": 0,
+    "bushels_stored": 900,
+    "coin": 10,
+    "unrest": 10,
+    "improvements": [],
+    "construction": null,
+    "obligations": {
+      "tax_due_coin": 0,
+      "tithe_due_bushels": 0,
+      "arrears": {
+        "coin": 0,
+        "bushels": 0
+      },
+      "war_levy_due": null
+    }
+  },
+  "house": {
+    "head": {
+      "id": "p_head",
+      "name": "Giles",
+      "sex": "M",
+      "age": 27,
+      "alive": true,
+      "traits": {
+        "stewardship": 3,
+        "martial": 3,
+        "diplomacy": 3,
+        "discipline": 2,
+        "fertility": 3
+      },
+      "married": true
+    },
+    "spouse": {
+      "id": "p_spouse",
+      "name": "Matilda",
+      "sex": "F",
+      "age": 24,
+      "alive": true,
+      "traits": {
+        "stewardship": 3,
+        "martial": 3,
+        "diplomacy": 3,
+        "discipline": 3,
+        "fertility": 3
+      },
+      "married": true
+    },
+    "spouse_status": "spouse",
+    "children": [
+      {
+        "id": "p_child1",
+        "name": "Joan",
+        "sex": "F",
+        "age": 12,
+        "alive": true,
+        "traits": {
+          "stewardship": 3,
+          "martial": 2,
+          "diplomacy": 2,
+          "discipline": 4,
+          "fertility": 4
+        },
+        "married": false
+      },
+      {
+        "id": "p_child2",
+        "name": "Robert",
+        "sex": "M",
+        "age": 9,
+        "alive": true,
+        "traits": {
+          "stewardship": 3,
+          "martial": 3,
+          "diplomacy": 3,
+          "discipline": 4,
+          "fertility": 3
+        },
+        "married": false
+      }
+    ],
+    "energy": {
+      "max": 5,
+      "available": 5
+    },
+    "heir_id": null
+  },
+  "locals": {
+    "liege": {
+      "id": "p_liege",
+      "name": "Geoffrey",
+      "sex": "M",
+      "age": 41,
+      "alive": true,
+      "traits": {
+        "stewardship": 4,
+        "martial": 3,
+        "diplomacy": 2,
+        "discipline": 3,
+        "fertility": 2
+      },
+      "married": false
+    },
+    "clergy": {
+      "id": "p_clergy",
+      "name": "Aldric",
+      "sex": "M",
+      "age": 52,
+      "alive": true,
+      "traits": {
+        "stewardship": 3,
+        "martial": 3,
+        "diplomacy": 4,
+        "discipline": 2,
+        "fertility": 3
+      },
+      "married": false
+    },
+    "nobles": [
+      {
+        "id": "p_noble1",
+        "name": "Oswin of Falkmere",
+        "sex": "M",
+        "age": 55,
+        "alive": true,
+        "traits": {
+          "stewardship": 2,
+          "martial": 4,
+          "diplomacy": 3,
+          "discipline": 3,
+          "fertility": 3
+        },
+        "married": false
+      },
+      {
+        "id": "p_noble2",
+        "name": "Robert of Caldwell",
+        "sex": "M",
+        "age": 54,
+        "alive": true,
+        "traits": {
+          "stewardship": 2,
+          "martial": 3,
+          "diplomacy": 3,
+          "discipline": 3,
+          "fertility": 3
+        },
+        "married": false
+      },
+      {
+        "id": "p_noble3",
+        "name": "Walter of Glenholt",
+        "sex": "M",
+        "age": 25,
+        "alive": true,
+        "traits": {
+          "stewardship": 3,
+          "martial": 3,
+          "diplomacy": 3,
+          "discipline": 2,
+          "fertility": 3
+        },
+        "married": false
+      },
+      {
+        "id": "p_noble4",
+        "name": "Oswin of Evershaw",
+        "sex": "M",
+        "age": 50,
+        "alive": true,
+        "traits": {
+          "stewardship": 3,
+          "martial": 3,
+          "diplomacy": 3,
+          "discipline": 3,
+          "fertility": 3
+        },
+        "married": false
+      }
+    ]
+  },
+  "relationships": [
+    {
+      "from_id": "p_head",
+      "to_id": "p_liege",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_liege",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_head",
+      "to_id": "p_clergy",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_clergy",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_head",
+      "to_id": "p_noble1",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_noble1",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_head",
+      "to_id": "p_noble2",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_noble2",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_head",
+      "to_id": "p_noble3",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_noble3",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_head",
+      "to_id": "p_noble4",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    },
+    {
+      "from_id": "p_noble4",
+      "to_id": "p_head",
+      "allegiance": 50,
+      "respect": 50,
+      "threat": 20
+    }
+  ],
+  "flags": {
+    "_cooldowns": {},
+    "_mods": {}
+  },
+  "log": [],
+  "game_over": null
+}

@@ -1,0 +1,22 @@
+QA Engineer — Map v1 Preflight Gate + Contract Checks
+
+Objective
+- Add/extend QA preflight to include map validation + asset manifest checks, and enforce sim/map boundary.
+
+Tasks
+1) Add/verify scripts exist and run:
+- npm run map:validate
+- npm run assets:validate
+- npm run boundary:check (fail if src/sim imports map/assets)
+
+2) Add fast tests:
+- Map schema snapshot test (map_v1.json matches schema_version map_schema_v1)
+- Validate hex enumeration and hex_id derivation (hx_<index>)
+- Validate references (county_id, seat hex_id, settlement hex_id)
+- Validate adjacency recomputation matches cache if cache present
+
+3) CI/Preflight rule
+- Preflight PASS required before full QA gate and before Balance full pass for release candidates.
+
+Deliverable docs
+- docs/qa/map_v1_preflight.md (what’s checked, how to run locally)

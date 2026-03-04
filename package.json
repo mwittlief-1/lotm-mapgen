@@ -1,0 +1,40 @@
+{
+  "name": "lords-of-the-manor-mvp",
+  "version": "0.2.6",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "qa": "node scripts/qaGate.js",
+    "sim:batch": "tsx scripts/simBatch.ts",
+    "matrices": "tsx scripts/generateMatrices.ts",
+    "sim:batch:no-deps": "node scripts/simBatchNoDeps.mjs",
+    "preflight": "node scripts/preflightNoDeps.mjs",
+    "prospects:stub": "node scripts/prospectsStub.mjs",
+    "map:gen": "node scripts/mapGenV1.mjs",
+    "map:batch": "node scripts/mapBatchV1.mjs",
+    "map:validate": "node scripts/mapValidateV1.mjs",
+    "assets:validate": "node scripts/assetsValidateV1.mjs",
+    "boundary:check": "node scripts/boundaryCheck.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

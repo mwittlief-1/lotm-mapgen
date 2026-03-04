@@ -1,0 +1,24 @@
+Art Lead — Map v1 Visual Language (low-asset, scalable)
+
+Objective
+- Provide a minimal, consistent visual system that reduces text density without blocking engineering.
+
+Deliverables
+1) assets/manifest.json (or assets_manifest.json)
+- Stable keys for:
+  - metric icons: food, coin, unrest, court, prospects, death
+  - county marker icon (seat)
+  - settlement icons by kind (hamlet/village/town/abbey/bishopric if used)
+  - fallback crest/icon keys (must exist)
+- Validation rule: any referenced key must exist in manifest.
+
+2) docs/art/visual_language_v1.md
+- Badge set: Heir, Married, Widowed, Officer (Steward/Clerk/Marshal)
+- Tag chips for event/prospect impacts (Food/Wealth/Unrest/Relations/Succession)
+- Typography hierarchy: title/subtitle/body/secondary
+- No bespoke illustrations required; simple SVG/emoji placeholders acceptable.
+
+Constraints
+- No changes to sim.
+- Assets must be lightweight and consistent.
+- Provide fallbacks so missing art never breaks UI.

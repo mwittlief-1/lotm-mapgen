@@ -1,0 +1,34 @@
+[
+  {
+    "seed": "lotm_v005_001_baseline",
+    "note": "Baseline equilibrium; moderate variance."
+  },
+  {
+    "seed": "lotm_v005_002_builder_pressure",
+    "note": "Builder tension; construction vs food."
+  },
+  {
+    "seed": "lotm_v005_003_market_tight",
+    "note": "Low price/sell-cap variance; obligations stress."
+  },
+  {
+    "seed": "lotm_v005_004_war_levy",
+    "note": "War levy pressure; coin fallback -> men."
+  },
+  {
+    "seed": "lotm_v005_005_unrest_chain",
+    "note": "Unrest drivers; dispossession risk."
+  },
+  {
+    "seed": "lotm_v005_006_household_risk",
+    "note": "Mortality/birth variance; heir risk."
+  },
+  {
+    "seed": "lotm_v005_007_security_losses",
+    "note": "Bandits/fire/petty theft buffering test."
+  },
+  {
+    "seed": "lotm_v005_008_blight_weather",
+    "note": "Weather+blight modifiers; yield fragility."
+  }
+]

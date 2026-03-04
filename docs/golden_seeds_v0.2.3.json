@@ -1,0 +1,38 @@
+{
+  "app_version": "v0.2.2",
+  "notes": "Golden seed set for v0.2.2 (External Houses worldgen seed + non-destructive People-First sync).",
+  "seeds": [
+    {
+      "seed": "lotm_v022_seed_001_baseline_extworld",
+      "note": "Baseline sanity: external houses seeded deterministically via worldgen stream; People/Houses registries remain bounded + stable." 
+    },
+    {
+      "seed": "lotm_v022_seed_002_relationship_edges",
+      "note": "Aim: ensure player head ↔ external heads relationship edges exist and remain deterministic." 
+    },
+    {
+      "seed": "lotm_v022_seed_003_succession_pressure",
+      "note": "Aim: trigger at least one succession/heir selection log line (deterministic) while external registries persist." 
+    },
+    {
+      "seed": "lotm_v022_seed_004_widow_line",
+      "note": "Aim: exercise widowhood path + spouse_status handling; verify external houses are not wiped by ensurePeopleFirst()." 
+    },
+    {
+      "seed": "lotm_v022_seed_005_unrest_pressure",
+      "note": "Aim: stress arrears/unrest; confirm clamps; logs bounded." 
+    },
+    {
+      "seed": "lotm_v022_seed_006_construction_path",
+      "note": "Aim: verify builder-forward prioritization stable; batch harness KPIs remain in range." 
+    },
+    {
+      "seed": "lotm_v022_seed_007_weather_volatility",
+      "note": "Aim: exercise weather/market randomness; confirm determinism across repeated runs." 
+    },
+    {
+      "seed": "lotm_v022_seed_008_long_tail_check",
+      "note": "Aim: general long-tail weirdness detector for 15T regression." 
+    }
+  ]
+}

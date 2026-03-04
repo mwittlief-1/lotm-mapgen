@@ -1,0 +1,37 @@
+{
+  "app_version": "v0.1.0",
+  "seeds": [
+    {
+      "seed": "lotm_v009_001_baseline",
+      "note": "Baseline equilibrium; sanity check after durability tuning."
+    },
+    {
+      "seed": "lotm_v009_002_heir_pressure",
+      "note": "Household death/birth variance; DeathNoHeir pressure test."
+    },
+    {
+      "seed": "lotm_v009_003_market_tight",
+      "note": "Low price / sell-cap squeeze; arrears stability under stress."
+    },
+    {
+      "seed": "lotm_v009_004_weather_stack",
+      "note": "Weather volatility stack; buffer discipline."
+    },
+    {
+      "seed": "lotm_v009_005_builder_temptation",
+      "note": "Builder-forward path; unrest/arrears tail risk."
+    },
+    {
+      "seed": "lotm_v009_006_war_levy_early",
+      "note": "Early war levy; men-or-coin fallback handling."
+    },
+    {
+      "seed": "lotm_v009_007_unrest_pressure",
+      "note": "Unrest escalation path; decay vs arrears coupling."
+    },
+    {
+      "seed": "lotm_v009_008_bandit_fire",
+      "note": "Sudden losses (bandits/fire) test recovery loops."
+    }
+  ]
+}

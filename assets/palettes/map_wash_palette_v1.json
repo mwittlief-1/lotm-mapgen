@@ -1,0 +1,22 @@
+{
+  "schema_version": "map_wash_palette_v1",
+  "generated_at": "2026-02-17",
+  "notes": [
+    "Muted watercolor washes intended to sit under linework/patterns.",
+    "Color-blind safe mode: reduce/remove wash; rely on patterns+borders+tokens."
+  ],
+  "tokens": {
+    "wash.crown": "#C7B6D8",
+    "wash.count": "#B8C8DD",
+    "wash.baron": "#BFD6C8",
+    "wash.knight": "#D7C7A2",
+    "wash.church": "#B7D4D0",
+    "wash.wild": "#D9D0C2",
+    "wash.other": "#D6B8B2",
+    "wash.river": "#A8B7C4"
+  },
+  "opacity_targets": {
+    "zoom_out": 0.22,
+    "zoom_in": 0.12
+  }
+}

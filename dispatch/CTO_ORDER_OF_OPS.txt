@@ -1,0 +1,6 @@
+# CTO Order of Operations — v0.2.6
+1) DevB (tooling/harness completeness) starts immediately if any harness gaps remain.
+2) BE starts tuning loop immediately (KNOBS-based) using baseline v0.2.5.
+3) Balance runs DOE grid on each candidate packet; iterates knob recommendations.
+4) QA certifies final candidate only (avoid repeated cert cycles during tuning).
+5) Deploy + CEO smoke playtest on Vercel after QA PASS.

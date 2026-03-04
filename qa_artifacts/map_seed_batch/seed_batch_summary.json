@@ -1,0 +1,1206 @@
+{
+  "schema_version": "map_seed_batch_summary_v1",
+  "config_path": "data/map/map_v1_config.json",
+  "seeds_file": "qa_artifacts/map_seed_batch/seeds_styles_ABC_v0_1.json",
+  "generated_at_utc": "2026-03-04T14:56:11.636Z",
+  "seeds": [
+    {
+      "seed": "PLAY_A_001",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_A_001/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_A_001/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_A_001/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_A_001/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11251,
+        "sea_hexes": 2826,
+        "void_hexes": 8423,
+        "coast_share": 0.47802197802197804,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0232558139534884,
+        "lake_count": 7,
+        "lake_hexes": 99,
+        "lake_sizes": [
+          44,
+          26,
+          9,
+          8,
+          6,
+          3,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.2457559328059728,
+        "water_access_within_coast": 0.07812638876544307,
+        "water_access_within_river": 0.17376233223713447,
+        "water_access_within_lake": 0.07208248155719492,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.36341024037298525,
+        "seat_spacing_min": 20,
+        "seat_spacing_avg": 59.36190476190476
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 2,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 10,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_A_002",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_A_002/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_A_002/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_A_002/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_A_002/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11150,
+        "sea_hexes": 2927,
+        "void_hexes": 8423,
+        "coast_share": 0.4607390300230947,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0050251256281406,
+        "lake_count": 7,
+        "lake_hexes": 106,
+        "lake_sizes": [
+          44,
+          33,
+          8,
+          7,
+          6,
+          5,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.23730941704035874,
+        "water_access_within_coast": 0.07856502242152466,
+        "water_access_within_river": 0.1618834080717489,
+        "water_access_within_lake": 0.0769506726457399,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.376704959337799,
+        "seat_spacing_min": 20,
+        "seat_spacing_avg": 56.25714285714286
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_A_003",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_A_003/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_A_003/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_A_003/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_A_003/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11238,
+        "sea_hexes": 2839,
+        "void_hexes": 8423,
+        "coast_share": 0.4650900900900901,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0344827586206895,
+        "lake_count": 8,
+        "lake_hexes": 159,
+        "lake_sizes": [
+          46,
+          40,
+          38,
+          9,
+          8,
+          7,
+          7,
+          4
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.26677344723260366,
+        "water_access_within_coast": 0.0785726997686421,
+        "water_access_within_river": 0.1802811888236341,
+        "water_access_within_lake": 0.09645844456308952,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.36225463543365044,
+        "seat_spacing_min": 22,
+        "seat_spacing_avg": 60.96190476190476
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 3,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 11,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_A_004",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_A_004/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_A_004/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_A_004/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_A_004/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11174,
+        "sea_hexes": 2903,
+        "void_hexes": 8423,
+        "coast_share": 0.4765625,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.023696682464455,
+        "lake_count": 9,
+        "lake_hexes": 111,
+        "lake_sizes": [
+          38,
+          22,
+          10,
+          9,
+          9,
+          8,
+          6,
+          5,
+          4
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.23071415786647576,
+        "water_access_within_coast": 0.07768032933595848,
+        "water_access_within_river": 0.17567567567567569,
+        "water_access_within_lake": 0.10479684982996242,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3860932188216867,
+        "seat_spacing_min": 24,
+        "seat_spacing_avg": 58.77142857142857
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_A_005",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_A_005/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_A_005/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_A_005/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_A_005/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11247,
+        "sea_hexes": 2830,
+        "void_hexes": 8423,
+        "coast_share": 0.4912854030501089,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.013392857142857,
+        "lake_count": 8,
+        "lake_hexes": 159,
+        "lake_sizes": [
+          49,
+          43,
+          28,
+          8,
+          8,
+          8,
+          8,
+          7
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.29376722681603984,
+        "water_access_within_coast": 0.08313327998577398,
+        "water_access_within_river": 0.1828043033697875,
+        "water_access_within_lake": 0.0957588690317418,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3819344168624032,
+        "seat_spacing_min": 21,
+        "seat_spacing_avg": 58.76190476190476
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 2,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 12,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_B_001",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_B_001/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_B_001/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_B_001/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_B_001/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11361,
+        "sea_hexes": 2716,
+        "void_hexes": 8423,
+        "coast_share": 0.49785867237687365,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.048458149779736,
+        "lake_count": 8,
+        "lake_hexes": 132,
+        "lake_sizes": [
+          45,
+          44,
+          10,
+          10,
+          7,
+          6,
+          6,
+          4
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.264149282633571,
+        "water_access_within_coast": 0.0822110729689288,
+        "water_access_within_river": 0.18783557785406213,
+        "water_access_within_lake": 0.09250946219522929,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3605559165555729,
+        "seat_spacing_min": 20,
+        "seat_spacing_avg": 54.49523809523809
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 2,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 12,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_B_002",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_B_002/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_B_002/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_B_002/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_B_002/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11244,
+        "sea_hexes": 2833,
+        "void_hexes": 8423,
+        "coast_share": 0.4742152466367713,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0142857142857142,
+        "lake_count": 12,
+        "lake_hexes": 157,
+        "lake_sizes": [
+          53,
+          29,
+          22,
+          10,
+          9,
+          9,
+          5,
+          5,
+          5,
+          4,
+          3,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.2669868374244041,
+        "water_access_within_coast": 0.07764140875133405,
+        "water_access_within_river": 0.17004624688722875,
+        "water_access_within_lake": 0.12433297758804696,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3750926848323983,
+        "seat_spacing_min": 19,
+        "seat_spacing_avg": 56.53333333333333
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_B_003",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_B_003/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_B_003/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_B_003/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_B_003/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11376,
+        "sea_hexes": 2701,
+        "void_hexes": 8423,
+        "coast_share": 0.47444444444444445,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.023696682464455,
+        "lake_count": 10,
+        "lake_hexes": 88,
+        "lake_sizes": [
+          24,
+          22,
+          10,
+          7,
+          7,
+          6,
+          3,
+          3,
+          3,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.24437412095639943,
+        "water_access_within_coast": 0.0795534458509142,
+        "water_access_within_river": 0.16139240506329114,
+        "water_access_within_lake": 0.08482770745428973,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.35346351122526426,
+        "seat_spacing_min": 22,
+        "seat_spacing_avg": 56.79047619047619
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 2,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 11,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_B_004",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_B_004/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_B_004/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_B_004/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_B_004/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11363,
+        "sea_hexes": 2714,
+        "void_hexes": 8423,
+        "coast_share": 0.490174672489083,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.013452914798206,
+        "lake_count": 8,
+        "lake_hexes": 85,
+        "lake_sizes": [
+          29,
+          20,
+          10,
+          7,
+          6,
+          6,
+          4,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.24174953797412654,
+        "water_access_within_coast": 0.0803484995159729,
+        "water_access_within_river": 0.1659772947285048,
+        "water_access_within_lake": 0.07418815453665405,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3696209464730977,
+        "seat_spacing_min": 20,
+        "seat_spacing_avg": 56.457142857142856
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_B_005",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_B_005/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_B_005/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_B_005/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_B_005/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11363,
+        "sea_hexes": 2714,
+        "void_hexes": 8423,
+        "coast_share": 0.45422535211267606,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.026178010471204,
+        "lake_count": 10,
+        "lake_hexes": 156,
+        "lake_sizes": [
+          52,
+          33,
+          25,
+          9,
+          9,
+          8,
+          7,
+          6,
+          4,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.25002200123206897,
+        "water_access_within_coast": 0.07348411511044618,
+        "water_access_within_river": 0.1686174425767843,
+        "water_access_within_lake": 0.11475842647188242,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.361606403325692,
+        "seat_spacing_min": 21,
+        "seat_spacing_avg": 59.31428571428572
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 3,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 11,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_C_001",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_C_001/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_C_001/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_C_001/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_C_001/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11392,
+        "sea_hexes": 2685,
+        "void_hexes": 8423,
+        "coast_share": 0.46551724137931033,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 1.9950738916256157,
+        "lake_count": 9,
+        "lake_hexes": 110,
+        "lake_sizes": [
+          37,
+          31,
+          9,
+          8,
+          8,
+          5,
+          5,
+          4,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.2753686797752809,
+        "water_access_within_coast": 0.07952949438202248,
+        "water_access_within_river": 0.18881671348314608,
+        "water_access_within_lake": 0.07961727528089887,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3676907715750646,
+        "seat_spacing_min": 23,
+        "seat_spacing_avg": 57.10476190476191
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 3,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 8,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_C_002",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_C_002/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_C_002/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_C_002/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_C_002/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11100,
+        "sea_hexes": 2977,
+        "void_hexes": 8423,
+        "coast_share": 0.47635135135135137,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0434782608695654,
+        "lake_count": 9,
+        "lake_hexes": 106,
+        "lake_sizes": [
+          38,
+          23,
+          10,
+          10,
+          8,
+          7,
+          4,
+          3,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.270990990990991,
+        "water_access_within_coast": 0.08045045045045045,
+        "water_access_within_river": 0.17657657657657658,
+        "water_access_within_lake": 0.09072072072072072,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3761213008501493,
+        "seat_spacing_min": 22,
+        "seat_spacing_avg": 54.161904761904765
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "land_hex_count differs from realm_hexes_land_target within tolerance",
+          "ctx": {
+            "landCount": 9969,
+            "landTarget": 10000,
+            "delta": -31,
+            "tol": 500,
+            "tolPct": 0.05
+          }
+        },
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_C_003",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_C_003/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_C_003/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_C_003/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_C_003/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11201,
+        "sea_hexes": 2876,
+        "void_hexes": 8423,
+        "coast_share": 0.47038724373576307,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.004854368932039,
+        "lake_count": 9,
+        "lake_hexes": 108,
+        "lake_sizes": [
+          43,
+          22,
+          10,
+          6,
+          6,
+          6,
+          6,
+          5,
+          4
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.2771181144540666,
+        "water_access_within_coast": 0.07963574680832068,
+        "water_access_within_river": 0.19266136952057852,
+        "water_access_within_lake": 0.08900990982947951,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.374231241568868,
+        "seat_spacing_min": 18,
+        "seat_spacing_avg": 56.352380952380955
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_C_004",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_C_004/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_C_004/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_C_004/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_C_004/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11252,
+        "sea_hexes": 2825,
+        "void_hexes": 8423,
+        "coast_share": 0.46629213483146065,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.004830917874396,
+        "lake_count": 11,
+        "lake_hexes": 155,
+        "lake_sizes": [
+          38,
+          36,
+          25,
+          10,
+          9,
+          9,
+          7,
+          7,
+          5,
+          5,
+          4
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.26537504443654464,
+        "water_access_within_coast": 0.07900817632420903,
+        "water_access_within_river": 0.18361180234624955,
+        "water_access_within_lake": 0.09820476359758265,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3786705685113862,
+        "seat_spacing_min": 19,
+        "seat_spacing_avg": 55.44761904761905
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 3,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 11,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": "PLAY_C_005",
+      "paths": {
+        "map": "qa_artifacts/map_seed_batch/PLAY_C_005/map_v1.json",
+        "metrics": "qa_artifacts/map_seed_batch/PLAY_C_005/mapgen_metrics.json",
+        "thumb_png": "qa_artifacts/map_seed_batch/PLAY_C_005/preview_thumb.png",
+        "layer_mask_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_mask.png",
+        "layer_terrain_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_terrain.png",
+        "layer_elevation_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_elevation.png",
+        "layer_political_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_political.png",
+        "layer_hydrology_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_hydrology.png",
+        "layer_macro_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_macro.png",
+        "layer_seats_png": "qa_artifacts/map_seed_batch/PLAY_C_005/layer_seats.png"
+      },
+      "metrics": {
+        "land_hexes": 11329,
+        "sea_hexes": 2748,
+        "void_hexes": 8423,
+        "coast_share": 0.4855555555555556,
+        "left_edge_coast_share": 0,
+        "avg_sea_neighbors_on_coast": 2.0045871559633026,
+        "lake_count": 13,
+        "lake_hexes": 155,
+        "lake_sizes": [
+          50,
+          26,
+          23,
+          8,
+          8,
+          7,
+          6,
+          6,
+          5,
+          5,
+          4,
+          4,
+          3
+        ],
+        "water_access_radius": 4,
+        "water_access_within_any": 0.2816665195515933,
+        "water_access_within_coast": 0.0799717539059052,
+        "water_access_within_river": 0.17759731662106099,
+        "water_access_within_lake": 0.10053844116868214,
+        "county_count": 15,
+        "market_count": 40,
+        "compactness_avg": 0.3765838118970404,
+        "seat_spacing_min": 22,
+        "seat_spacing_avg": 60.44761904761905
+      },
+      "validate_pass": true,
+      "warnings": [
+        {
+          "message": "estuary_length out of band",
+          "ctx": {
+            "estuary_length": 1,
+            "band": [
+              6,
+              12
+            ]
+          }
+        },
+        {
+          "message": "estuary_mouth_width out of band",
+          "ctx": {
+            "estuary_mouth_width": 13,
+            "band": [
+              3,
+              7
+            ]
+          }
+        },
+        {
+          "message": "market_towns_total out of band",
+          "ctx": {
+            "count": 41,
+            "band": [
+              22,
+              35
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

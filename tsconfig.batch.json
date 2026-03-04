@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist_batch",
+    "rootDir": ".",
+    "strict": false,
+    "noUncheckedIndexedAccess": false,
+    "skipLibCheck": true,
+    "noEmitOnError": false
+  },
+  "include": [
+    "src/sim/**/*.ts",
+    "src/content/**/*.ts",
+    "src/version.ts"
+  ]
+}

@@ -1,0 +1,6 @@
+# Build Engineer delta — required integration checks (v0.2.4)
+Before packaging:
+1) Determinism: confirm adding `court` stream did not change outputs when officers disabled (golden seeds).
+2) Idempotence: load/run twice → no duplicate officers.
+3) Reconciliation: peasant + court consumption equals total; bushel delta matches.
+4) Marriage accept: spouse appears in court roster; married badge shows; headcount increases.

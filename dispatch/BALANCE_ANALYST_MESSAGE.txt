@@ -1,0 +1,16 @@
+# DISPATCH — Balance Analyst (v0.2.3) [copy/paste]
+
+Before build finishes:
+- Propose prospect frequency targets + KPI expectations (design support)
+- Define 2–3 “prospect policies” (accept/reject heuristics) for batch runs
+
+After repo_HEAD:
+Run standard harness:
+- 250×15 prudent-builder
+- 250×15 builder-forward
+- 100×30 prudent-builder
+- 100×30 builder-forward
+
+Additionally:
+- Report prospects incidence rates (how often windows appear; distribution of types; accept/reject outcomes under each policy)
+Quote BUILD_INFO identity.

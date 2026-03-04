@@ -1,0 +1,5 @@
+# Dev B delta — required additions from TA (v0.2.4)
+- Implement `ensureCourtOfficers()` with idempotence + role-stable forks on `court` stream.
+- Store officer ids on `houses[player_house_id].court_officers` and married-in spouse ids on `court_extra_ids`.
+- Implement court headcount (unique alive IDs) and court consumption in TurnReport.
+- Ensure married flag updates both legacy and registry people objects to avoid sync overwrite.

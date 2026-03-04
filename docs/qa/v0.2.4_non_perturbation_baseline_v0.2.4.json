@@ -1,0 +1,357 @@
+{
+  "baseline_source_app_version": "v0.2.4",
+  "baseline_source_code_fingerprint": "6c1b961d0891ea625895a308e6b9325b19a00466a85f4abb20df464a37cad67c",
+  "turns": 15,
+  "policies": [
+    "prudent-builder",
+    "builder-forward"
+  ],
+  "seeds": [
+    "lotm_v022_seed_001_baseline_extworld",
+    "lotm_v022_seed_002_relationship_edges",
+    "lotm_v022_seed_003_succession_pressure",
+    "lotm_v022_seed_004_widow_line",
+    "lotm_v022_seed_005_unrest_pressure",
+    "lotm_v022_seed_006_construction_path",
+    "lotm_v022_seed_007_weather_volatility",
+    "lotm_v022_seed_008_long_tail_check"
+  ],
+  "expected": {
+    "prudent-builder": {
+      "lotm_v022_seed_001_baseline_extworld": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 35,
+          "farmers": 35,
+          "builders": 0,
+          "bushels_stored": 218,
+          "coin": 7,
+          "unrest": 66,
+          "arrears_coin": 0,
+          "arrears_bushels": 0,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_002_relationship_edges": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 33,
+          "farmers": 33,
+          "builders": 0,
+          "bushels_stored": 325,
+          "coin": 0,
+          "unrest": 49,
+          "arrears_coin": 4,
+          "arrears_bushels": 0,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_003_succession_pressure": {
+        "turn_index": 13,
+        "game_over_reason": "Dispossessed",
+        "manor": {
+          "population": 26,
+          "farmers": 26,
+          "builders": 0,
+          "bushels_stored": 0,
+          "coin": 0,
+          "unrest": 100,
+          "arrears_coin": 0,
+          "arrears_bushels": 340,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_004_widow_line": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 40,
+          "farmers": 40,
+          "builders": 0,
+          "bushels_stored": 696,
+          "coin": 1,
+          "unrest": 27,
+          "arrears_coin": 0,
+          "arrears_bushels": 0,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_005_unrest_pressure": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 35,
+          "farmers": 35,
+          "builders": 0,
+          "bushels_stored": 260,
+          "coin": 2,
+          "unrest": 43,
+          "arrears_coin": 0,
+          "arrears_bushels": 0,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_006_construction_path": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 41,
+          "farmers": 41,
+          "builders": 0,
+          "bushels_stored": 0,
+          "coin": 29,
+          "unrest": 9,
+          "arrears_coin": 0,
+          "arrears_bushels": 74,
+          "improvements": [
+            "granary_upgrade"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 4
+        }
+      },
+      "lotm_v022_seed_007_weather_volatility": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 39,
+          "farmers": 39,
+          "builders": 0,
+          "bushels_stored": 136,
+          "coin": 38,
+          "unrest": 12,
+          "arrears_coin": 0,
+          "arrears_bushels": 0,
+          "improvements": []
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_008_long_tail_check": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 42,
+          "farmers": 42,
+          "builders": 0,
+          "bushels_stored": 1021,
+          "coin": 41,
+          "unrest": 10,
+          "arrears_coin": 0,
+          "arrears_bushels": 0,
+          "improvements": [
+            "granary_upgrade"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      }
+    },
+    "builder-forward": {
+      "lotm_v022_seed_001_baseline_extworld": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 30,
+          "farmers": 30,
+          "builders": 0,
+          "bushels_stored": 961,
+          "coin": 0,
+          "unrest": 94,
+          "arrears_coin": 3,
+          "arrears_bushels": 647,
+          "improvements": [
+            "drainage_ditches",
+            "field_rotation"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_002_relationship_edges": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 29,
+          "farmers": 29,
+          "builders": 0,
+          "bushels_stored": 564,
+          "coin": 0,
+          "unrest": 92,
+          "arrears_coin": 7,
+          "arrears_bushels": 481,
+          "improvements": [
+            "drainage_ditches",
+            "field_rotation"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_003_succession_pressure": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 30,
+          "farmers": 30,
+          "builders": 0,
+          "bushels_stored": 486,
+          "coin": 0,
+          "unrest": 88,
+          "arrears_coin": 9,
+          "arrears_bushels": 418,
+          "improvements": [
+            "drainage_ditches",
+            "field_rotation"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_004_widow_line": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 36,
+          "farmers": 32,
+          "builders": 4,
+          "bushels_stored": 409,
+          "coin": 3,
+          "unrest": 71,
+          "arrears_coin": 10,
+          "arrears_bushels": 532,
+          "improvements": [
+            "drainage_ditches",
+            "field_rotation",
+            "village_feast"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_005_unrest_pressure": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 31,
+          "farmers": 30,
+          "builders": 1,
+          "bushels_stored": 696,
+          "coin": 0,
+          "unrest": 85,
+          "arrears_coin": 4,
+          "arrears_bushels": 401,
+          "improvements": [
+            "drainage_ditches",
+            "field_rotation"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_006_construction_path": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 31,
+          "farmers": 31,
+          "builders": 0,
+          "bushels_stored": 0,
+          "coin": 0,
+          "unrest": 78,
+          "arrears_coin": 5,
+          "arrears_bushels": 495,
+          "improvements": [
+            "field_rotation",
+            "village_feast"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_007_weather_volatility": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 31,
+          "farmers": 31,
+          "builders": 0,
+          "bushels_stored": 0,
+          "coin": 0,
+          "unrest": 89,
+          "arrears_coin": 9,
+          "arrears_bushels": 585,
+          "improvements": [
+            "field_rotation"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      },
+      "lotm_v022_seed_008_long_tail_check": {
+        "turn_index": 15,
+        "game_over_reason": null,
+        "manor": {
+          "population": 35,
+          "farmers": 31,
+          "builders": 4,
+          "bushels_stored": 101,
+          "coin": 0,
+          "unrest": 61,
+          "arrears_coin": 12,
+          "arrears_bushels": 544,
+          "improvements": [
+            "field_rotation",
+            "village_feast"
+          ]
+        },
+        "energy": {
+          "max": 5,
+          "available": 5
+        }
+      }
+    }
+  }
+}

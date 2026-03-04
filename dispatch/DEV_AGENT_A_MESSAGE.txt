@@ -1,0 +1,10 @@
+# DISPATCH — Dev Agent A (v0.2.3.2 UI Polish) [copy/paste]
+
+You are Dev Agent A. Implement v0.2.3.2 P1 UI items per `docs/releases/v0.2.3.2_PLAN.md` and UX docs in this package (`docs/ux/v0.2.3_copy.md` includes v0.2.3.2 patch addendum).
+
+Deliver: `devA_patch_v0.2.3.2_ui_polish.zip` containing only UI files + `DEV_NOTES.md`.
+
+Hard rules:
+- No sim logic changes.
+- No ad hoc copy (use the UX docs strings).
+- Do not reintroduce hook-order violations (all hooks unconditional; single return).

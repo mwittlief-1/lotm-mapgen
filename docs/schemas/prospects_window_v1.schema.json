@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lotm.local/schemas/prospects_window_v1.schema.json",
+  "title": "ProspectsWindow v1 (prospects_window_v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "turn_index",
+    "generated_at_turn_index",
+    "prospects",
+    "shown_ids",
+    "hidden_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "prospects_window_v1"
+    },
+    "turn_index": {
+      "type": "integer"
+    },
+    "generated_at_turn_index": {
+      "type": "integer"
+    },
+    "prospects": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/definitions/Prospect"
+      }
+    },
+    "shown_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hidden_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "Costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coin": {
+          "type": "number"
+        },
+        "energy": {
+          "type": "number"
+        },
+        "bushels": {
+          "type": "number"
+        }
+      }
+    },
+    "Requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "respect_min",
+            "allegiance_min",
+            "threat_max",
+            "coin_min",
+            "no_arrears",
+            "custom"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "RelationshipDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "from_id",
+        "to_id",
+        "allegiance_delta",
+        "respect_delta",
+        "threat_delta"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "person",
+            "house"
+          ]
+        },
+        "from_id": {
+          "type": "string"
+        },
+        "to_id": {
+          "type": "string"
+        },
+        "allegiance_delta": {
+          "type": "number"
+        },
+        "respect_delta": {
+          "type": "number"
+        },
+        "threat_delta": {
+          "type": "number"
+        }
+      }
+    },
+    "PredictedEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coin_delta": {
+          "type": "number"
+        },
+        "relationship_deltas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelationshipDelta"
+          }
+        },
+        "flags_set": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ProspectBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "from_house_id",
+        "to_house_id",
+        "subject_person_id",
+        "summary",
+        "requirements",
+        "costs",
+        "predicted_effects",
+        "uncertainty",
+        "expires_turn",
+        "actions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "marriage",
+            "grant",
+            "inheritance_claim"
+          ]
+        },
+        "from_house_id": {
+          "type": "string"
+        },
+        "to_house_id": {
+          "type": "string"
+        },
+        "subject_person_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Requirement"
+          }
+        },
+        "costs": {
+          "$ref": "#/definitions/Costs"
+        },
+        "predicted_effects": {
+          "$ref": "#/definitions/PredictedEffects"
+        },
+        "uncertainty": {
+          "enum": [
+            "known",
+            "likely",
+            "possible"
+          ]
+        },
+        "expires_turn": {
+          "type": "integer"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "accept",
+              "reject"
+            ]
+          }
+        }
+      }
+    },
+    "Prospect": {
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/definitions/ProspectBase"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "marriage"
+                },
+                "subject_person_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "subject_person_id"
+              ]
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/definitions/ProspectBase"
+            },
+            {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "grant",
+                    "inheritance_claim"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

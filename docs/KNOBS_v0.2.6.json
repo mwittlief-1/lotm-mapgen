@@ -1,0 +1,89 @@
+{
+  "version": "v0.2.6",
+  "scope": "tuning-only (stabilization: household/court economics + 30-turn durability)",
+  "notes": "This file is a tuning ledger for Balance/BE iterations. 'from' reflects the current baseline; 'to' should be updated per tuning iteration (keep changes minimal when possible).",
+  "knobs": [
+    {
+      "name": "court_start_headcount",
+      "from": {
+        "court_officers_generated_at_start": ["steward"],
+        "court_extra_ids": [],
+        "notes": "v0.2.5 realism lock: steward-only default to avoid early food spiral."
+      },
+      "to": null,
+      "rationale": "Adjust only if early spiral starts persist or 30T completion remains low; prefer tuning consumption/mortality first."
+    },
+    {
+      "name": "starting_labor_allocation",
+      "from": {
+        "population": 45,
+        "farmers": 36,
+        "builders": 9,
+        "notes": "v0.2.5 realism lock: start nearer food-stable by allocating more farmers; idle still consumes."
+      },
+      "to": null,
+      "rationale": "Tune to reduce early shortages without removing meaningful construction tradeoffs."
+    },
+    {
+      "name": "unrest_shortage_penalty",
+      "from": 9,
+      "to": null,
+      "rationale": "If arrears/shortage spirals dominate, adjust in small increments."
+    },
+    {
+      "name": "unrest_arrears_penalty",
+      "from": 1,
+      "to": null,
+      "rationale": "Secondary spiral knob; keep low to preserve obligations pressure without guaranteed dispossession."
+    },
+    {
+      "name": "unrest_baseline_decay_when_stable",
+      "from": 2,
+      "to": null,
+      "rationale": "Keeps Stable Finish meaningful across 30T; tune if unrest tails remain high in prudent runs."
+    },
+    {
+      "name": "fertility_and_births",
+      "from": {
+        "BASE_FERTILITY": 0.845,
+        "BIRTH_CHANCE_BY_FERTILITY": [0, 0.09, 0.17, 0.26, 0.34, 0.42],
+        "BIRTH_FERTILE_AGE_MIN": 16,
+        "BIRTH_FERTILE_AGE_MAX": 48
+      },
+      "to": null,
+      "rationale": "Primary durability knob for DeathNoHeir rate at 30 turns; keep changes minimal and deterministic."
+    },
+    {
+      "name": "mortality_age_bands",
+      "from": {
+        "MORTALITY_P_UNDER16": 0.0035,
+        "MORTALITY_P_UNDER40": 0.006,
+        "MORTALITY_P_UNDER55": 0.02,
+        "MORTALITY_P_UNDER65": 0.045,
+        "MORTALITY_P_65PLUS": 0.09,
+        "MORTALITY_MULT_WITH_PHYSICIAN": 0.6
+      },
+      "to": null,
+      "rationale": "Tune to reduce DeathNoHeir (esp. 65+) while keeping mortality threatening."
+    },
+    {
+      "name": "market_price_bounds",
+      "from": {
+        "MARKET_PRICE_MIN": 0.06,
+        "MARKET_PRICE_MAX": 0.14,
+        "SELL_CAP_FACTOR_MIN": 0.8,
+        "SELL_CAP_FACTOR_MAX": 1.2
+      },
+      "to": null,
+      "rationale": "Tune only if coin availability causes systematic collapse across policies/horizons."
+    },
+    {
+      "name": "prospects_visibility_thresholds",
+      "from": {
+        "notes": "Presentation-only thresholds are allowed if prospect spam or irrelevant offers contribute to runaway behavior. No new systems." 
+      },
+      "to": null,
+      "rationale": "Only adjust if empirically tied to 30T durability collapse."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# DISPATCH — Technical Architect (v0.2.5) [copy/paste]
+Review risks for:
+- population semantic change impacts (labor, consumption, clamp)
+- determinism implications of marriage residence updates
+- officer sex/aging enforcement
+Deliver `docs/arch/v0.2.5_realism_review.md`.

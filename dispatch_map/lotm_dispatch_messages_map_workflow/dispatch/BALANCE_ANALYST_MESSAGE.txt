@@ -1,0 +1,12 @@
+Balance Analyst — Map v1 Impact & Telemetry (no balance tuning)
+
+Objective
+- Ensure map-lite additions remain presentation-only and do not perturb sim outputs.
+
+Tasks
+1) Non-perturbation check
+- Run a small regression comparison: same seeds/policies before vs after map changes must match sim metrics.
+- Confirm sim does not import map.
+
+2) Reporting
+- Add a short note in balance report: “Map v1 is presentation-only; no sim inputs.”

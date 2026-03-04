@@ -1,0 +1,38 @@
+{
+  "app_version": "v0.0.8",
+  "sim_version": "mvp_v0_1",
+  "golden_seeds": [
+    {
+      "seed": "lotm_v008_001_baseline",
+      "note": "Baseline equilibrium; normal variance."
+    },
+    {
+      "seed": "lotm_v008_002_market_tight",
+      "note": "Lower sell cap/price dips; obligations pressure."
+    },
+    {
+      "seed": "lotm_v008_003_weather_stack",
+      "note": "Hard winter/blight/drought stack potential."
+    },
+    {
+      "seed": "lotm_v008_004_unrest_pressure",
+      "note": "Petitions/runaways; dispossession risk."
+    },
+    {
+      "seed": "lotm_v008_005_war_levy_early",
+      "note": "Early war levy; men/coin stress."
+    },
+    {
+      "seed": "lotm_v008_006_construction_path",
+      "note": "Construction-heavy path; checks builders tradeoffs."
+    },
+    {
+      "seed": "lotm_v008_007_household_risk",
+      "note": "Mortality/heir risk edge."
+    },
+    {
+      "seed": "lotm_v008_008_bandit_fire",
+      "note": "Sudden losses (bandits/fire) test buffers."
+    }
+  ]
+}

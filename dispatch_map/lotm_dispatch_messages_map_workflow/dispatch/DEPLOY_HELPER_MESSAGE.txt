@@ -1,0 +1,19 @@
+Deploy Helper — Map v1 Release Mirror Workflow
+
+Objective
+- Ensure deployment mirror repo remains in sync and map assets ship correctly.
+
+Tasks per release candidate
+1) Update mirror repo
+- unzip release zip -> commit -> tag -> push
+- confirm map_v1.json and asset manifest included
+
+2) Vercel config
+- ensure SPA rewrites configured for BrowserRouter
+- node version + package-lock pinned in mirror repo
+
+3) Smoke check
+- open hosted URL and verify:
+  - map-lite view loads
+  - no missing asset errors (console)
+  - APP_VERSION + fingerprint visible

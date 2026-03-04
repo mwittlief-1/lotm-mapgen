@@ -1,0 +1,5 @@
+# DISPATCH — QA Engineer (v0.2.6) [copy/paste]
+Run authoritative gates on repo_HEAD:
+- npm run preflight
+- npm run qa (no-deps)
+Publish docs/qa/v0.2.6_qa_gate.md PASS/FAIL and return lotm_v0.2.6_repo_CERTIFIED_QA.zip with qa_artifacts.

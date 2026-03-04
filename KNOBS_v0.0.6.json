@@ -1,0 +1,64 @@
+{
+  "APP_VERSION": "v0.0.6",
+  "SIM_VERSION": "mvp_v0_1",
+  "BASE_FERTILITY": {
+    "value": 0.82,
+    "rationale": "Fragile equilibrium baseline; makes productivity improvements matter without heavy randomness."
+  },
+  "SPOILAGE_RATE_BASE": {
+    "value": 0.045,
+    "rationale": "Baseline spoilage pressure; granary reduces to 0.02."
+  },
+  "SPOILAGE_RATE_GRANARY": {
+    "value": 0.02,
+    "rationale": "Granary meaningfully reduces spoilage."
+  },
+  "EVENTS_PER_TURN_PROBS": {
+    "value": [
+      {
+        "k": 0,
+        "p": 0.42
+      },
+      {
+        "k": 1,
+        "p": 0.43
+      },
+      {
+        "k": 2,
+        "p": 0.15
+      }
+    ],
+    "rationale": "Targets ~0.7\u20131.3 avg events/turn with cap=2."
+  },
+  "UNREST_SHORTAGE_PENALTY": {
+    "value": 9,
+    "rationale": "Shortage should be painful and visible."
+  },
+  "UNREST_ARREARS_PENALTY": {
+    "value": 2,
+    "rationale": "Arrears penalty applies next turn only (WP-02 lock); keep pressure but avoid instant death spiral."
+  },
+  "UNREST_BASELINE_DECAY_WHEN_STABLE": {
+    "value": 1,
+    "rationale": "Provides mild relief when fed + current on dues (v0.0.4 target: median end unrest <= 40 under prudent play)."
+  },
+  "BUILD_RATE_PER_BUILDER_PER_TURN": {
+    "value": 4,
+    "rationale": "Keeps multi-turn construction meaningful; builders vs farmers tradeoff is real."
+  },
+  "SELL_CAP_FACTOR_RANGE": {
+    "value": [
+      0.8,
+      1.2
+    ],
+    "rationale": "Maintains sell-cap variance without dynamic pricing."
+  },
+  "BUILDER_FORWARD_FOOD_BUFFER_TURNS": {
+    "value": 1.2,
+    "rationale": "WP-08 lock (policy-only): stall builders when stored food < 1.2 turns of consumption."
+  },
+  "BUILDER_FORWARD_PROJECT_PICK": {
+    "value": "(coin_cost, required, energy_cost, improvement_id)",
+    "rationale": "WP-09 lock (policy-only): cheapest viable improvement tie-break tuple."
+  }
+}

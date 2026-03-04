@@ -1,0 +1,38 @@
+{
+  "app_version": "v0.2.1",
+  "notes": "Golden seed set for v0.2.1 (People-First). No external-house scenario seed in this set.",
+  "seeds": [
+    {
+      "seed": "lotm_v021_seed_001_baseline",
+      "note": "Baseline sanity: ensure People/Houses registries present and bounded snapshots remain stable."
+    },
+    {
+      "seed": "lotm_v021_seed_002_succession_pressure",
+      "note": "Aim: trigger at least one succession/heir selection log line (deterministic)."
+    },
+    {
+      "seed": "lotm_v021_seed_003_widow_line",
+      "note": "Aim: exercise widowed path + spouse_status handling; verify kinship edges remain consistent."
+    },
+    {
+      "seed": "lotm_v021_seed_004_marriage_noise",
+      "note": "Aim: ensure marriage offer generation remains deterministic under registry-driven people lookup."
+    },
+    {
+      "seed": "lotm_v021_seed_005_unrest_pressure",
+      "note": "Aim: stress arrears/unrest; confirm no NaN and clamps; logs bounded."
+    },
+    {
+      "seed": "lotm_v021_seed_006_construction_path",
+      "note": "Aim: verify builder-forward prioritization still stable under People-First state additions."
+    },
+    {
+      "seed": "lotm_v021_seed_007_weather_volatility",
+      "note": "Aim: exercise weather/market randomness; confirm determinism across repeated runs."
+    },
+    {
+      "seed": "lotm_v021_seed_008_long_tail_check",
+      "note": "Aim: general long-tail weirdness detector for 15T regression."
+    }
+  ]
+}

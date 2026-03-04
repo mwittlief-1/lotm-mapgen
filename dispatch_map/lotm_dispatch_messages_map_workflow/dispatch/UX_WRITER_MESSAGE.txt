@@ -1,0 +1,19 @@
+UX Writer — Map v1 + Map-lite UI Copy (clarity only)
+
+Objective
+- Provide copy templates and hierarchy guidance for map-lite view without inventing mechanics.
+
+Deliverables
+1) docs/ux/map_v1_copy.md
+- Section titles: “Realm Map”, “Counties”, “Seats”, “Settlements”
+- Hover/selection labels: county name, seat name, settlement name/kind
+- Legend text (short): what colors/markers mean
+- Empty states: “No map data loaded.”, etc.
+
+2) docs/ux/map_v1_info_hierarchy.md
+- What must show on the map view vs in details
+- How to show relationship state in a compact way (if displayed)
+
+Constraints
+- Presentation-only; do not imply map changes sim outcomes.
+- Keep text minimal; rely on icons/legend.

@@ -1,0 +1,6 @@
+{
+  "allowed_game_over_reasons": [
+    "Dispossessed",
+    "DeathNoHeir"
+  ]
+}

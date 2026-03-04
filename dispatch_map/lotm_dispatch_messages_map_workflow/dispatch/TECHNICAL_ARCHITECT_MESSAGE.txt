@@ -1,0 +1,21 @@
+Technical Architect — Map v1 Contract Review (determinism + boundaries)
+
+Objective
+- Review Map v1 design for determinism, boundary enforcement, and growth risk.
+
+Checklist
+1) Determinism
+- map_v1.json generation deterministic given MAPGEN_SEED + config
+- fixed neighbor direction order and derived adjacency
+- stable hex_id derivation (hx_<index> no padding)
+
+2) Boundaries
+- src/sim must not import map/assets
+- map UI reads map data only; sim outputs unchanged
+
+3) Growth risk
+- adjacency computation O(n) and safe
+- schema forward-compatible (roads/rivers deferred)
+
+Deliverable
+- docs/ta/map_v1_review.md (short approval + any risks + required fixes)

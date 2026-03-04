@@ -1,0 +1,11 @@
+# DISPATCH — Dev Agent B (v0.2.3.2 Correctness) [copy/paste]
+
+You are Dev Agent B. Implement v0.2.3.2 P0 correctness items per `docs/releases/v0.2.3.2_PLAN.md`.
+
+Use UX copy addendum sections in `docs/ux/v0.2.3_copy.md` for widow/labor/end-turn/unrest copy alignment (but do not touch UI).
+
+Deliver: `devB_patch_v0.2.3.2_correctness.zip` containing only sim/types/tests/docs changes + `DEV_NOTES.md`.
+
+Hard rules:
+- No new mechanics; fix correctness only.
+- Determinism preserved (sorted iteration, isolated RNG unaffected).

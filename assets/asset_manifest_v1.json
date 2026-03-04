@@ -1,0 +1,221 @@
+{
+  "schema_version": "asset_manifest_v1",
+  "generated_at": "2026-02-17",
+  "assets_root": ".",
+  "required_keys": {
+    "P0": [
+      "icon.resource.coin",
+      "icon.resource.food_bushels",
+      "icon.resource.unrest",
+      "icon.action.accept",
+      "icon.action.reject",
+      "icon.alert.warning",
+      "icon.fallback.generic"
+    ],
+    "MapP0": [
+      "map_pattern.farmland_hatch",
+      "map_pattern.forest_stipple",
+      "map_pattern.forest_abstract",
+      "map_pattern.hills_contour",
+      "map_pattern.mountains_chevron",
+      "map_pattern.swamp_reeds",
+      "map_pattern.water_waves",
+      "map_pattern.road_dots",
+      "map_token.seat",
+      "map_token.hamlet",
+      "map_token.village",
+      "map_token.town",
+      "map_token.abbey",
+      "map_token.bishopric",
+      "map_token.port",
+      "map_token.market",
+      "map_token.fallback.settlement",
+      "crest.fallback.shield"
+    ]
+  },
+  "assets": {
+    "icon.metric.coin": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.coin.svg",
+      "status": "ready"
+    },
+    "icon.metric.food": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.food.svg",
+      "status": "ready"
+    },
+    "icon.metric.unrest": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.unrest.svg",
+      "status": "ready"
+    },
+    "icon.metric.court": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.court.svg",
+      "status": "ready"
+    },
+    "icon.metric.prospects": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.prospects.svg",
+      "status": "ready"
+    },
+    "icon.metric.death": {
+      "type": "svg",
+      "path": "assets/icons/icon.metric.death.svg",
+      "status": "ready"
+    },
+    "icon.resource.coin": {
+      "type": "svg",
+      "path": "assets/icons/icon.resource.coin.svg",
+      "status": "ready"
+    },
+    "icon.resource.food_bushels": {
+      "type": "svg",
+      "path": "assets/icons/icon.resource.food_bushels.svg",
+      "status": "ready"
+    },
+    "icon.resource.unrest": {
+      "type": "svg",
+      "path": "assets/icons/icon.resource.unrest.svg",
+      "status": "ready"
+    },
+    "icon.action.accept": {
+      "type": "svg",
+      "path": "assets/icons/icon.action.accept.svg",
+      "status": "ready"
+    },
+    "icon.action.reject": {
+      "type": "svg",
+      "path": "assets/icons/icon.action.reject.svg",
+      "status": "ready"
+    },
+    "icon.alert.warning": {
+      "type": "svg",
+      "path": "assets/icons/icon.alert.warning.svg",
+      "status": "ready"
+    },
+    "icon.fallback.generic": {
+      "type": "svg",
+      "path": "assets/icons/icon.fallback.generic.svg",
+      "status": "ready"
+    },
+    "map_pattern.farmland_hatch": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.farmland_hatch.svg",
+      "status": "ready"
+    },
+    "map_pattern.forest_stipple": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.forest_stipple.svg",
+      "status": "ready"
+    },
+    "map_pattern.forest_abstract": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.forest_abstract.svg",
+      "status": "ready"
+    },
+    "map_pattern.mountains_chevron": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.mountains_chevron.svg",
+      "status": "ready"
+    },
+    "map_pattern.hills_contour": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.hills_contour.svg",
+      "status": "ready"
+    },
+    "map_pattern.swamp_reeds": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.swamp_reeds.svg",
+      "status": "ready"
+    },
+    "map_pattern.water_waves": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.water_waves.svg",
+      "status": "ready"
+    },
+    "map_pattern.road_dots": {
+      "type": "svg",
+      "path": "assets/map_patterns/map_pattern.road_dots.svg",
+      "status": "ready"
+    },
+    "map_token.seat": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.seat.svg",
+      "status": "ready"
+    },
+    "map_token.hamlet": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.hamlet.svg",
+      "status": "ready"
+    },
+    "map_token.village": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.village.svg",
+      "status": "ready"
+    },
+    "map_token.town": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.town.svg",
+      "status": "ready"
+    },
+    "map_token.abbey": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.abbey.svg",
+      "status": "ready"
+    },
+    "map_token.bishopric": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.bishopric.svg",
+      "status": "ready"
+    },
+    "map_token.market": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.market.svg",
+      "status": "ready"
+    },
+    "map_token.port": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.port.svg",
+      "status": "ready"
+    },
+    "map_token.fallback.settlement": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.fallback.settlement.svg",
+      "status": "ready"
+    },
+    "crest.fallback.shield": {
+      "type": "svg",
+      "path": "assets/crests/crest.fallback.shield.svg",
+      "status": "ready"
+    },
+    "map_token.archdiocese": {
+      "type": "svg",
+      "path": "assets/map_tokens/map_token.archdiocese.svg",
+      "status": "ready"
+    }
+  },
+  "notes": [
+    "SVG assets use currentColor for ink linework; themes control color.",
+    "Hybrid map: patterns are monochrome; political wash is CSS tokens (assets/palettes/map_wash_palette_v1.json).",
+    "Color-blind safe mode: rely on patterns + stamped borders + tokens; wash is supplemental.",
+    "Optional token added: map_token.archdiocese (non-blocking; not required in MapP0)."
+  ],
+  "fallbacks": {
+    "icon": "icon.fallback.generic",
+    "settlement_token": "map_token.fallback.settlement",
+    "crest": "crest.fallback.shield"
+  },
+  "kind_icon_map": {
+    "seat": "map_token.seat",
+    "hamlet": "map_token.hamlet",
+    "village": "map_token.village",
+    "town": "map_token.town",
+    "abbey": "map_token.abbey",
+    "bishopric": "map_token.bishopric",
+    "market": "map_token.market",
+    "port": "map_token.port",
+    "_fallback": "map_token.fallback.settlement",
+    "archdiocese": "map_token.archdiocese"
+  }
+}

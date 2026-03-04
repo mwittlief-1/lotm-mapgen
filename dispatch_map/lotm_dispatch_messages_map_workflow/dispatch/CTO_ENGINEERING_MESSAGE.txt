@@ -1,0 +1,40 @@
+CTO/Engineering — Map v1 Workflow Implementation (presentation-only)
+
+Objective
+- Implement Map v1 build pipeline (map:gen + map:validate + assets:validate + sim import boundary check) and integrate map-lite UI safely.
+- Map must not perturb sim. Sim must not import map/assets.
+
+Deliverables (in repo)
+1) Scripts
+- npm run map:gen -- --seed=<MAPGEN_SEED> --config=data/map/map_v1_config.json --out=data/map/map_v1.json
+- npm run map:validate (fail-fast schema + adjacency validations)
+- npm run assets:validate (manifest completeness: all referenced asset keys exist)
+- npm run boundary:check (fail if src/sim imports data/map or assets)
+
+2) Data files
+- data/map/map_v1_config.json (source config; committed)
+- data/map/map_v1.json (generated artifact; committed)
+- assets/manifest.json (or assets_manifest.json) with stable keys + fallbacks
+
+3) Validations (required)
+- schema_version == map_schema_v1
+- hexes.length == width*height
+- q/r match index position; in-bounds
+- hex_id == hx_<index> (LOCK: no padding)
+- county_id references valid
+- seats/settlements reference valid hexes
+- adjacency derived via fixed neighbor order; cached neighbor_county_ids must match recomputed if present
+- runtime uses derived adjacency unless cache validated
+
+4) UI integration
+- Add a map-lite view or strip that reads data/map/map_v1.json.
+- Keep it presentation-only (colors, labels, hover/select).
+- No sim inputs from map in v1.
+
+Process notes
+- MapGen uses MAPGEN_SEED (static build seed), NOT run_seed.
+- Any plan to use map tags in sim requires Workpad + Lock (later).
+
+Output
+- Add docs/map/map_v1_notes.md (what changed, seed, config hash).
+- Ensure preflight runs these validations before full QA/balance on release candidates.

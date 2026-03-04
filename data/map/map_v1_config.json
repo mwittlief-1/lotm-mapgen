@@ -1,0 +1,542 @@
+{
+  "schema_version": "map_v1_config_v1_1",
+  "vibe": {
+    "region": "England/Capetian with Low Countries commercialization cues",
+    "era": "c.1150\u20131350",
+    "notes": "Historical vibe, not strict accuracy. Medieval trackways with limited royal highways; chartered towns as market nodes."
+  },
+  "scale": {
+    "hex_acres": 200,
+    "hex_km2_approx": 0.81,
+    "realm_hexes_land_target": 10000,
+    "realm_km2_approx": 8100,
+    "distance_step_km_approx": 1
+  },
+  "capital": {
+    "require_capital": true,
+    "capital_policy": "designated_seat",
+    "description": "Exactly one county seat is designated as the capital seat (presentation-only)."
+  },
+  "counties": {
+    "county_count": 15,
+    "size_bands_hex": {
+      "small": [
+        450,
+        580
+      ],
+      "medium": [
+        600,
+        720
+      ],
+      "large": [
+        780,
+        950
+      ]
+    },
+    "distribution": {
+      "small": 4,
+      "medium": 8,
+      "large": 3
+    },
+    "exact_sum_example": {
+      "small": {
+        "hexes_each": 520,
+        "count": 4
+      },
+      "medium": {
+        "hexes_each": 660,
+        "count": 8
+      },
+      "large": {
+        "hexes_each": 880,
+        "count": 3
+      },
+      "total_hexes": 10000
+    },
+    "seat_gravity": {
+      "seat_is_highest_degree_in_county": true,
+      "crossing_proximity_steps": [
+        0,
+        3
+      ],
+      "market_pull_radius_steps": [
+        10,
+        18
+      ],
+      "market_towns_within_radius_min_by_county_band": {
+        "small": 1,
+        "medium": 2,
+        "large": 2
+      },
+      "centrality_soft_rule": "Non-frontier counties: seat should lie within inner ~60% of county extent; frontier/march counties may be edge seats."
+    }
+  },
+  "sea_semantics": {
+    "sea_hexes_excluded_from_county_checks": true,
+    "land_hex_target_excludes_sea": true,
+    "notes": "County size and distribution checks operate on land hexes only. Sea hexes are outside counties."
+  },
+  "coast_and_estuary": {
+    "coast_required": true,
+    "coast_boundary_share_target": [
+      0.25,
+      0.4
+    ],
+    "coast_boundary_share_default": 0.3,
+    "coast_shape": {
+      "major_indentation_required": true,
+      "indentation_depth_hex": [
+        6,
+        14
+      ],
+      "max_deep_inlets": 2
+    },
+    "major_river_system": {
+      "required": true,
+      "count": 1,
+      "must_terminate_in_estuary": true
+    },
+    "estuary": {
+      "length_hex": [
+        6,
+        12
+      ],
+      "mouth_width_hex": [
+        3,
+        7
+      ],
+      "marsh_ring_steps": [
+        0,
+        3
+      ]
+    },
+    "ports": {
+      "primary_port_required": true,
+      "primary_port_placement": {
+        "preferred": "estuary_head",
+        "allowed": [
+          "estuary_head",
+          "sheltered_mouth_within_2"
+        ]
+      },
+      "primary_port_is_chartered_town": true,
+      "primary_port_adjacency_rule": "Primary port must be on a land hex with at least one sea-neighbor.",
+      "secondary_port_count_band": [
+        0,
+        1
+      ]
+    }
+  },
+  "settlements": {
+    "seats_total": 15,
+    "market_towns_total_band": [
+      22,
+      35
+    ],
+    "village_clusters_total_band": [
+      210,
+      330
+    ],
+    "market_towns_per_county_by_band": {
+      "small": [
+        1,
+        2
+      ],
+      "medium": [
+        1,
+        3
+      ],
+      "large": [
+        2,
+        4
+      ]
+    },
+    "spacing_steps": {
+      "village_cluster_nn_base": [
+        5,
+        12
+      ],
+      "village_cluster_nn_river_corridor": [
+        4,
+        9
+      ],
+      "village_cluster_nn_trunk_corridor": [
+        4,
+        10
+      ],
+      "village_cluster_nn_frontier": [
+        8,
+        14
+      ],
+      "market_town_nn_base": [
+        15,
+        25
+      ],
+      "market_town_nn_dense_corridor": [
+        12,
+        20
+      ],
+      "market_town_nn_frontier": [
+        20,
+        35
+      ]
+    },
+    "cathedral_city_count_band": [
+      1,
+      2
+    ],
+    "secondary_secular_seats_per_county_band": [
+      0,
+      2
+    ]
+  },
+  "roads": {
+    "tiers": [
+      "trunk",
+      "secondary",
+      "minor"
+    ],
+    "trunk_spines": {
+      "primary_required": "capital_to_primary_port",
+      "secondary_count_band": [
+        1,
+        2
+      ]
+    },
+    "degree_targets": {
+      "seat_small": [
+        6,
+        8
+      ],
+      "seat_medium": [
+        7,
+        10
+      ],
+      "seat_large": [
+        9,
+        12
+      ],
+      "market_town": [
+        4,
+        7
+      ],
+      "primary_port": [
+        6,
+        10
+      ],
+      "village_cluster": [
+        2,
+        4
+      ]
+    },
+    "crossings": {
+      "bridge_prefer_on": [
+        "trunk",
+        "secondary"
+      ],
+      "ford_ferry_prefer_on": [
+        "minor"
+      ],
+      "bridge_attracts_node_within_steps": 2
+    }
+  },
+  "terrain": {
+    "types": [
+      "sea",
+        "lake",
+      "coast",
+      "plains",
+      "forest",
+      "hills",
+      "marsh",
+      "mountains"
+    ],
+    "cluster_strength_band": [
+      1,
+      2.2
+    ],
+    "cluster_strength_default": 1.5,
+    "transition_weights": {
+      "sea": {
+        "sea": 5,
+        "coast": 4,
+        "plains": 0,
+        "forest": 0,
+        "hills": 0,
+        "marsh": 1,
+        "mountains": 0
+      },
+      "coast": {
+        "sea": 4,
+        "coast": 3,
+        "plains": 3,
+        "forest": 1,
+        "hills": 1,
+        "marsh": 2,
+        "mountains": 0
+      },
+      "plains": {
+        "sea": 0,
+        "coast": 1,
+        "plains": 5,
+        "forest": 3,
+        "hills": 2,
+        "marsh": 2,
+        "mountains": 0
+      },
+      "forest": {
+        "sea": 0,
+        "coast": 0,
+        "plains": 3,
+        "forest": 5,
+        "hills": 2,
+        "marsh": 1,
+        "mountains": 1
+      },
+      "hills": {
+        "sea": 0,
+        "coast": 0,
+        "plains": 2,
+        "forest": 2,
+        "hills": 5,
+        "marsh": 0,
+        "mountains": 3
+      },
+      "marsh": {
+        "sea": 1,
+        "coast": 3,
+        "plains": 3,
+        "forest": 1,
+        "hills": 0,
+        "marsh": 5,
+        "mountains": 0
+      },
+      "mountains": {
+        "sea": 0,
+        "coast": 0,
+        "plains": 0,
+        "forest": 1,
+        "hills": 4,
+        "marsh": 0,
+        "mountains": 5
+      }
+    },
+    "disallowed_adjacencies": [
+      [
+        "marsh",
+        "mountains"
+      ],
+      [
+        "plains",
+        "mountains"
+      ],
+      [
+        "mountains",
+        "sea"
+      ],
+      [
+        "mountains",
+        "coast"
+      ]
+    ],
+    "coupling": {
+      "marsh_boost_near_estuary": {
+        "steps": 3,
+        "multiplier_band": [
+          2,
+          4
+        ]
+      },
+      "marsh_boost_near_lower_river": {
+        "steps": 2,
+        "multiplier_band": [
+          1.5,
+          2.5
+        ]
+      },
+      "trunk_road_marsh_cost": "high"
+    }
+  },
+  "church": {
+    "bishopric_count_band": [
+      7,
+      9
+    ],
+    "archdiocese_count": 1,
+    "abbey_institution_count_band": [
+      120,
+      180
+    ],
+    "abbey_marker_count_band": [
+      12,
+      30
+    ]
+  },
+  "grid": {
+    "width": 150,
+    "height": 150,
+    "coord_system": "axial",
+    "enumeration": "row_major",
+    "notes": "Rectangular axial storage; land/sea/void represented via tile_kind. hex index = r*width+q."
+  },
+  "mapgen": {
+    "neighbor_dir_order": [
+      {
+        "name": "E",
+        "dq": 1,
+        "dr": 0
+      },
+      {
+        "name": "NE",
+        "dq": 1,
+        "dr": -1
+      },
+      {
+        "name": "NW",
+        "dq": 0,
+        "dr": -1
+      },
+      {
+        "name": "W",
+        "dq": -1,
+        "dr": 0
+      },
+      {
+        "name": "SW",
+        "dq": -1,
+        "dr": 1
+      },
+      {
+        "name": "SE",
+        "dq": 0,
+        "dr": 1
+      }
+    ],
+    "world_shape": "hex",
+    "world_radius": 62,
+    "sea_band_width": 14,
+    "void_border": 3,
+    "estuary_mouth_width": 5,
+    "estuary_length": 8,
+    "hydrology": {
+      "major_river": {
+        "corridor_radius": 7,
+        "waypoints": 4,
+        "noise_scale": 12,
+        "noise_amp": 85,
+        "corridor_penalty": 0,
+        "base_step_cost": 70,
+        "max_len_factor": 1.8
+      },
+      "tributary": {
+        "corridor_radius": 4,
+        "waypoints": 2,
+        "noise_scale": 10,
+        "noise_amp": 55,
+        "corridor_penalty": 0,
+        "base_step_cost": 55,
+        "max_len_factor": 1.8
+      }
+    },
+    "remask": {
+      "enabled": true,
+      "context_buffer": 10,
+      "kernel_margin": 6,
+      "plane_band_width": 8,
+      "plane_penalty_slope": 28,
+      "plane_meander_scale": 14,
+      "plane_meander_amp": 14,
+      "plane_meander_scale2": 5,
+      "plane_meander_amp2": 8,
+      "radial_penalty_slope": 2,
+      "noise_amp": 6,
+      "noise_scale": 9,
+      "enabled_frontier_rails": true,
+      "frontier_ridge_offset": 6,
+      "frontier_ridge_belt_radius": 2,
+      "frontier_ridge_penalty": 120,
+      "frontier_ridge_meander_scale": 16,
+      "frontier_ridge_meander_amp": 4,
+      "frontier_river_offset": 4,
+      "frontier_river_belt_radius": 1,
+      "frontier_river_penalty": 90,
+      "frontier_ford_penalty": 20,
+      "frontier_river_ford_count": 2,
+      "frontier_river_meander_scale": 14,
+      "frontier_river_meander_amp": 3,
+      "smooth_passes": 2,
+      "seed_radius": 46,
+      "land_target_tol": 0.05
+    },
+    "coast_side": "seeded_adjacent_sides",
+    "coast": {
+      "noise_strength": 0.4,
+      "noise_scale": 0.09,
+      "min_inlet_depth": 2,
+      "max_inlet_depth": 8,
+      "max_straight_run": 4,
+      "max_breaks": 1200
+    },
+    "macro": {
+      "noise_scale": 16,
+      "noise_amp": 8,
+      "meander_scale": 18,
+      "meander_amp": 12,
+      "ridge_belt_radius": 2,
+      "ridge_pass_count": 1,
+      "ridge_pass_radius": 2,
+      "river_belt_radius": 1,
+      "max_cost": 220,
+      "ridge_line_cost": 200,
+      "ridge_pass_cost": 24,
+      "river_line_cost": 180,
+      "river_ford_cost": 24,
+      "river_ford_count": 2,
+      "A": {
+        "ridge_amp": 26,
+        "ridge_falloff": 4
+      },
+      "B": {
+        "ridge_band": 2,
+        "ridge_amp": 14,
+        "meander_amp": 10
+      },
+      "C": {
+        "plain_width_min": 11,
+        "plain_width_max": 17,
+        "escarpment_width": 3,
+        "escarpment_amp": 22,
+        "escarpment_falloff": 6,
+        "inland_amp": 12,
+        "inland_slope": 1
+      },
+      "secondary_noise_scale": 32,
+      "secondary_noise_amp": 6,
+      "tertiary_noise_scale": 10,
+      "tertiary_noise_amp": 2
+    },
+    "counties": {
+      "mu": 1.6,
+      "alpha": 0.18,
+      "min_county_size": 250,
+      "seat_repair_passes": 2,
+      "seat_min_dist": 13,
+      "seat_viability_radius": 6,
+      "seat_viability_floor": 25,
+      "voronoi_smooth": {
+        "passes": 2,
+        "radius": 3,
+        "support_frac": 0.28,
+        "min_support": 8,
+        "protect_cost_frac": 0.7,
+        "min_county_size": 250
+      },
+      "basin_seat_weight_coast": 0.9,
+      "basin_seat_weight_river": 0.35,
+      "basin_river_access_radius": 2
+    }
+  },
+  "seed": {
+    "default_mapgen_seed": "MAPGEN_SEED_v0_3_001"
+  }
+}

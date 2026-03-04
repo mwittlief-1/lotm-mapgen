@@ -1,0 +1,35 @@
+Map Specialist — Map v1 (map-lite) Build Tasks
+
+Objective
+- Produce deterministic map_v1_config + generated map_v1.json for presentation-only use (no sim dependencies).
+
+Deliverables
+1) data/map/map_v1_config.json
+- width, height
+- county count, county IDs and names
+- seat placement rules (or explicit seats)
+- settlement density rules (or explicit settlements)
+- MAPGEN_SEED value to use for generation (static build seed)
+
+2) data/map/map_v1.json (generated)
+- schema_version: map_schema_v1
+- counties[] (id, name, optional tier/region tags)
+- hexes[] enumerated row-major by (q,r)
+  - hex_id = hx_<index> (LOCK: no padding)
+  - county_id set
+- seats[] (county_id -> hex_id)
+- settlements[] (kind, hex_id, name optional)
+
+3) docs/map/map_v1_notes.md
+- MAPGEN_SEED used
+- config summary (width/height, counties, settlement density)
+- any intentional design choices
+
+Constraints (must)
+- Deterministic: same seed+config => identical map_v1.json
+- Fixed neighbor direction order (axial) assumed by validator
+- Do NOT add roads/rivers v1
+- Do NOT add sim-facing effects; tags may be added as metadata only (region/seat), no mechanics.
+
+Send Engineering
+- Confirm chosen width/height and county count; confirm MAPGEN_SEED.

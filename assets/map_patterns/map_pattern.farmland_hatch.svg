@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g opacity="0.55">
+    <path d="M-8 56L56 -8"/>
+    <path d="M0 64L64 0"/>
+    <path d="M8 72L72 8"/>
+    <path d="M-8 40L40 -8"/>
+    <path d="M-8 24L24 -8"/>
+    <path d="M24 72L72 24"/>
+    <path d="M40 72L72 40"/>
+  </g>
+  <g opacity="0.65" stroke-width="1.6">
+    <path d="M18 18h.01"/>
+    <path d="M46 22h.01"/>
+    <path d="M28 40h.01"/>
+    <path d="M52 44h.01"/>
+    <path d="M12 50h.01"/>
+  </g>
+
+</svg>

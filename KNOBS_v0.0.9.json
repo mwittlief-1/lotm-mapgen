@@ -1,0 +1,71 @@
+{
+  "version": "v0.0.9",
+  "scope": "tuning-only (durability + stability)",
+  "knobs": [
+    {
+      "name": "fertility_and_births",
+      "from": {
+        "BASE_FERTILITY": 0.82,
+        "birth_chance_by_fertility": [
+          0,
+          0.06,
+          0.12,
+          0.18,
+          0.24,
+          0.3
+        ],
+        "fertile_age_min": 16,
+        "fertile_age_max": 42
+      },
+      "to": {
+        "BASE_FERTILITY": 0.845,
+        "birth_chance_by_fertility": [
+          0,
+          0.09,
+          0.17,
+          0.26,
+          0.34,
+          0.42
+        ],
+        "fertile_age_min": 16,
+        "fertile_age_max": 48
+      },
+      "rationale": "BASE_FERTILITY small bump supports builder-forward stability (fewer tithe arrears from shortages) without adding new systems; birth odds/window increased to reduce 30-turn DeathNoHeir."
+    },
+    {
+      "name": "mortality_base_schedule",
+      "from": {
+        "p_under40": 0.01,
+        "p_under55": 0.03,
+        "p_under65": 0.06,
+        "p_65plus": 0.12
+      },
+      "to": {
+        "p_under16": 0.0035,
+        "p_under40": 0.006,
+        "p_under55": 0.02,
+        "p_under65": 0.045,
+        "p_65plus": 0.09
+      },
+      "rationale": "Reduce child/heir mortality (and slightly reduce overall mortality) so heirs are more likely to survive to succession at 30 turns."
+    },
+    {
+      "name": "physician_mortality_multiplier",
+      "from": 0.8,
+      "to": 0.6,
+      "rationale": "Increase Physician's durability impact without changing costs/build system."
+    },
+    {
+      "name": "arrears_unrest_penalty_per_turn",
+      "from": 2,
+      "to": 1,
+      "rationale": "Slightly reduce arrears-driven unrest spiral (secondary: builder-forward stability)."
+    },
+    {
+      "name": "stable_unrest_decay_per_turn",
+      "from": 1,
+      "to": 2,
+      "rationale": "Increase steady-state unrest decay when fed + dues current to keep prudent runs in the <=40 band over 30 turns."
+    }
+  ]
+}

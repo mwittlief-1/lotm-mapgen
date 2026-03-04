@@ -1,0 +1,197 @@
+{
+  "schema": {
+    "map_schema_version": "map_schema_v1",
+    "config_schema_version": "map_v1_config_v1_1",
+    "width": 150,
+    "height": 150
+  },
+  "counts": {
+    "land_hex_count": 11252,
+    "sea_hex_count": 2825,
+    "void_hex_count": 8423,
+    "county_count": 15,
+    "seat_count": 15,
+    "capital_seat_count": 1,
+    "settlement_counts": {
+      "seats": 15,
+      "settlements_total": 67,
+      "port_total": 1,
+      "market_total": 40,
+      "abbey_total": 18,
+      "bishopric_total": 8
+    },
+    "primary_port_count": 1,
+    "metropolitan_bishopric_count": 1,
+    "cathedral_bishopric_count": 1
+  },
+  "county_size_stats": {
+    "min": 344,
+    "max": 1087,
+    "avg": 666.6666666666666,
+    "by_county": [
+      {
+        "county_id": "c_14",
+        "land_hex_count": 1087
+      },
+      {
+        "county_id": "c_0",
+        "land_hex_count": 866
+      },
+      {
+        "county_id": "c_2",
+        "land_hex_count": 838
+      },
+      {
+        "county_id": "c_7",
+        "land_hex_count": 807
+      },
+      {
+        "county_id": "c_6",
+        "land_hex_count": 801
+      },
+      {
+        "county_id": "c_8",
+        "land_hex_count": 722
+      },
+      {
+        "county_id": "c_12",
+        "land_hex_count": 682
+      },
+      {
+        "county_id": "c_3",
+        "land_hex_count": 675
+      },
+      {
+        "county_id": "c_9",
+        "land_hex_count": 652
+      },
+      {
+        "county_id": "c_5",
+        "land_hex_count": 634
+      },
+      {
+        "county_id": "c_11",
+        "land_hex_count": 628
+      },
+      {
+        "county_id": "c_10",
+        "land_hex_count": 513
+      },
+      {
+        "county_id": "c_4",
+        "land_hex_count": 405
+      },
+      {
+        "county_id": "c_13",
+        "land_hex_count": 346
+      },
+      {
+        "county_id": "c_1",
+        "land_hex_count": 344
+      }
+    ]
+  },
+  "coastline": {
+    "outerBoundaryEdges": 890,
+    "coastEdges": 415,
+    "coastline_share": 0.46629213483146065,
+    "coastlineArcLandCount": 207,
+    "coast_hexes_total": 207,
+    "left_edge_coast_hexes": 0,
+    "left_edge_coast_share": 0,
+    "avg_sea_neighbors_on_coast": 2.004830917874396
+  },
+  "hydrology": {
+    "hydrology_present": true,
+    "estuary_component_count": 1,
+    "estuary_connects_to_sea": true,
+    "estuary_mouth_width": 11,
+    "estuary_length": 3,
+    "major_river_component_count": 1,
+    "major_river_touches_estuary": true,
+    "major_river_tile_count": 220
+  },
+  "lakes": {
+    "lake_hex_count": 155,
+    "lake_count": 11,
+    "sizes_desc": [
+      38,
+      36,
+      25,
+      10,
+      9,
+      9,
+      7,
+      7,
+      5,
+      5,
+      4
+    ],
+    "size_min": 4,
+    "size_max": 38,
+    "size_avg": 14.090909090909092,
+    "spec_bands": {
+      "small_3_10": {
+        "count": 8,
+        "sizes": [
+          10,
+          9,
+          9,
+          7,
+          7,
+          5,
+          5,
+          4
+        ]
+      },
+      "medium_20_50": {
+        "count": 3,
+        "sizes": [
+          38,
+          36,
+          25
+        ]
+      },
+      "large_ge_30": {
+        "count": 2,
+        "sizes": [
+          38,
+          36
+        ]
+      }
+    }
+  },
+  "water_access": {
+    "radius": 4,
+    "land_hex_count": 11252,
+    "source_counts": {
+      "coast": 207,
+      "river": 223,
+      "lake": 155
+    },
+    "within": {
+      "any": 0.26537504443654464,
+      "coast": 0.07900817632420903,
+      "river": 0.18361180234624955,
+      "lake": 0.09820476359758265
+    }
+  },
+  "derived": {
+    "seat_spacing_min": 19,
+    "seat_spacing_avg": 55.44761904761905,
+    "county_compactness_avg": 0.3786705685113862,
+    "river_boundary_share": 0.17260656883298392,
+    "mountain_boundary_share": 0.4129979035639413
+  },
+  "warnings": [
+    {
+      "code": "coastline_share_out_of_band",
+      "coastline_share": 0.46629213483146065,
+      "target": [
+        0.25,
+        0.4
+      ]
+    }
+  ],
+  "generated_at": "2026-03-04T14:57:56.283Z"
+}

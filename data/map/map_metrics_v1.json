@@ -1,0 +1,169 @@
+{
+  "schema": {
+    "map_schema_version": "map_schema_v1",
+    "config_schema_version": "map_v1_config_v1_1",
+    "width": 150,
+    "height": 110
+  },
+  "counts": {
+    "land_hex_count": 10000,
+    "sea_hex_count": 2224,
+    "void_hex_count": 4276,
+    "county_count": 15,
+    "seat_count": 15,
+    "capital_seat_count": 1,
+    "settlement_counts": {
+      "seats": 15,
+      "settlements_total": 67,
+      "port_total": 1,
+      "market_total": 40,
+      "abbey_total": 18,
+      "bishopric_total": 8
+    },
+    "primary_port_count": 1,
+    "metropolitan_bishopric_count": 1,
+    "cathedral_bishopric_count": 1
+  },
+  "county_size_stats": {
+    "min": 520,
+    "max": 880,
+    "avg": 666.6666666666666,
+    "by_county": [
+      {
+        "county_id": "c_0",
+        "land_hex_count": 880
+      },
+      {
+        "county_id": "c_1",
+        "land_hex_count": 880
+      },
+      {
+        "county_id": "c_2",
+        "land_hex_count": 880
+      },
+      {
+        "county_id": "c_10",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_3",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_4",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_5",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_6",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_7",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_8",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_9",
+        "land_hex_count": 660
+      },
+      {
+        "county_id": "c_11",
+        "land_hex_count": 520
+      },
+      {
+        "county_id": "c_12",
+        "land_hex_count": 520
+      },
+      {
+        "county_id": "c_13",
+        "land_hex_count": 520
+      },
+      {
+        "county_id": "c_14",
+        "land_hex_count": 520
+      }
+    ]
+  },
+  "coastline": {
+    "outerBoundaryEdges": 2694,
+    "coastEdges": 234,
+    "coastline_share": 0.08685968819599109,
+    "coastlineArcLandCount": 117,
+    "coast_hexes_total": 117,
+    "left_edge_coast_hexes": 0,
+    "left_edge_coast_share": 0,
+    "avg_sea_neighbors_on_coast": 2
+  },
+  "hydrology": {
+    "hydrology_present": true,
+    "estuary_component_count": 1,
+    "estuary_connects_to_sea": true,
+    "estuary_mouth_width": 5,
+    "estuary_length": 8,
+    "major_river_component_count": 1,
+    "major_river_touches_estuary": true,
+    "major_river_tile_count": 108
+  },
+  "lakes": {
+    "lake_hex_count": 0,
+    "lake_count": 0,
+    "sizes_desc": [],
+    "size_min": 0,
+    "size_max": 0,
+    "size_avg": 0,
+    "spec_bands": {
+      "small_3_10": {
+        "count": 0,
+        "sizes": []
+      },
+      "medium_20_50": {
+        "count": 0,
+        "sizes": []
+      },
+      "large_ge_30": {
+        "count": 0,
+        "sizes": []
+      }
+    }
+  },
+  "water_access": {
+    "radius": 4,
+    "land_hex_count": 10000,
+    "source_counts": {
+      "coast": 117,
+      "river": 108,
+      "lake": 0
+    },
+    "within": {
+      "any": 0.154,
+      "coast": 0.0577,
+      "river": 0.1019,
+      "lake": 0
+    }
+  },
+  "derived": {
+    "seat_spacing_min": 11,
+    "seat_spacing_avg": 59.819047619047616,
+    "county_compactness_avg": 0.6131196581196581,
+    "river_boundary_share": 0.011965811965811967,
+    "mountain_boundary_share": 0
+  },
+  "warnings": [
+    {
+      "code": "coastline_share_out_of_band",
+      "coastline_share": 0.08685968819599109,
+      "target": [
+        0.25,
+        0.4
+      ]
+    }
+  ],
+  "generated_at": "2026-02-17T20:39:06.555Z"
+}

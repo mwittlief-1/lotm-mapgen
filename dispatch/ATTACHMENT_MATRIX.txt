@@ -1,0 +1,6 @@
+# Attachment Matrix — v0.2.3.2 kickoff
+
+Send this zip (`lotm_v0.2.3.2_patch_kickoff.zip`) to Dev A and Dev B.
+
+Also attach the baseline repo zip to each dev thread:
+- latest v0.2.3.1 deployable certified repo (Golden Layout)

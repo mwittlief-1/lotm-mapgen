@@ -1,0 +1,38 @@
+{
+  "app_version": "v0.2.6",
+  "notes": "Golden seed set for v0.2.6 (Stabilization: household/court economics + 30-turn durability).",
+  "seeds": [
+    {
+      "seed": "lotm_v026_seed_001_baseline",
+      "note": "Baseline sanity: moderate variance; should avoid early spiral starts."
+    },
+    {
+      "seed": "lotm_v026_seed_002_heir_pressure",
+      "note": "Succession pressure: increased risk of DeathNoHeir; validates durability tuning at 30 turns."
+    },
+    {
+      "seed": "lotm_v026_seed_003_market_tight",
+      "note": "Market squeeze: low sell-cap/price variance; obligations stress."
+    },
+    {
+      "seed": "lotm_v026_seed_004_weather_stack",
+      "note": "Weather volatility stack potential (hard winter/blight/drought); buffer discipline test."
+    },
+    {
+      "seed": "lotm_v026_seed_005_builder_temptation",
+      "note": "Construction temptation: builder-forward stress; checks early construction vs food tradeoff."
+    },
+    {
+      "seed": "lotm_v026_seed_006_war_levy_early",
+      "note": "Early war levy pressure; coin vs men fallback stability."
+    },
+    {
+      "seed": "lotm_v026_seed_007_unrest_pressure",
+      "note": "Unrest escalation path; dispossession threshold clarity and recovery loops."
+    },
+    {
+      "seed": "lotm_v026_seed_008_household_risk",
+      "note": "Household mortality/birth variance; validates court/household tuning and roster integrity."
+    }
+  ]
+}
