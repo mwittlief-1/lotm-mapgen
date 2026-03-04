@@ -16,6 +16,7 @@
     "prospects:stub": "node scripts/prospectsStub.mjs",
     "map:gen": "node scripts/mapGenV1.mjs",
     "map:batch": "node scripts/mapBatchV1.mjs",
+    "map:gallery": "node scripts/mapBatchV1.mjs",
     "map:validate": "node scripts/mapValidateV1.mjs",
     "assets:validate": "node scripts/assetsValidateV1.mjs",
     "boundary:check": "node scripts/boundaryCheck.mjs"
