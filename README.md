@@ -10,3 +10,13 @@ This is a deterministic, seeded manor-management prototype with:
 - QA gate (`npm run qa`)
 
 See `RUN.md` for commands.
+
+
+## Map Quickstart
+
+```bash
+npm ci
+npm run map:batch
+```
+
+Batch map artifacts are written to `qa_runs/` (untracked), under `qa_runs/map_seed_batch/`.

@@ -8,7 +8,7 @@
  * Outputs:
  * - data/map/map_v1.json (out)
  * - public/data/map/map_v1.json (runtime fetch path)
- * - qa_artifacts/mapgen_metrics.json (metrics)
+ * - --metricsOut path (metrics)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -2646,9 +2646,9 @@ const args = parseArgs(process.argv.slice(2));
 const seed = args.seed;
 const configPath = args.config;
 const outPath = args.out;
-// Optional outputs (used by map:batch). Defaults preserve map:gen contract.
+// Optional outputs (used by map:batch).
 const publicOutPath = args.publicOut ?? "public/data/map/map_v1.json";
-const metricsOutPath = args.metricsOut ?? "qa_artifacts/mapgen_metrics.json";
+const metricsOutPath = args.metricsOut;
 const reportOutPath = args.reportOut ?? "qa_artifacts/mapgen/report.json";
 
 assert(typeof seed === "string" && seed.length > 0, "--seed is required");
@@ -2656,7 +2656,6 @@ assert(typeof configPath === "string" && configPath.length > 0, "--config is req
 assert(typeof outPath === "string" && outPath.length > 0, "--out is required");
 
 assert(typeof publicOutPath === "string" && publicOutPath.length > 0, "--publicOut invalid");
-assert(typeof metricsOutPath === "string" && metricsOutPath.length > 0, "--metricsOut invalid");
 assert(typeof reportOutPath === "string" && reportOutPath.length > 0, "--reportOut invalid");
 
 const config = readJson(configPath);
@@ -3857,7 +3856,6 @@ const map = {
   width,
   height,
   neighbor_dir_order: defaultNeighborDirs(),
-  generated_at: new Date().toISOString(),
   mapgen_seed: seed,
   config_sha256: sha256File(configPath),
   macro: {
@@ -3879,20 +3877,27 @@ const publicOut = path.resolve(publicOutPath);
 ensureDir(path.dirname(publicOut));
 writeJson(publicOut, map);
 
-const metricsPath = path.resolve(metricsOutPath);
-ensureDir(path.dirname(metricsPath));
+const metricsPath = (typeof metricsOutPath === "string" && metricsOutPath.length > 0)
+  ? path.resolve(metricsOutPath)
+  : null;
 
-// If existing metrics file exists, it should match (self-check)
-if (fs.existsSync(metricsPath)) {
-  try {
-    const prev = JSON.parse(fs.readFileSync(metricsPath, "utf8"));
-    if (stableStringify(prev) !== stableStringify(metrics)) {
-      console.warn("WARN: existing qa_artifacts/mapgen_metrics.json differs; will overwrite on generation.");
-    }
-  } catch {}
+if (metricsPath) {
+  ensureDir(path.dirname(metricsPath));
+
+  // If existing metrics file exists, it should match (self-check)
+  if (fs.existsSync(metricsPath)) {
+    try {
+      const prev = JSON.parse(fs.readFileSync(metricsPath, "utf8"));
+      if (stableStringify(prev) !== stableStringify(metrics)) {
+        console.warn(`WARN: existing metrics file differs at ${metricsPath}; will overwrite on generation.`);
+      }
+    } catch {}
+  }
+
+  writeJson(metricsPath, metrics);
+} else {
+  console.warn("WARN: --metricsOut not provided; metrics file not written.");
 }
-
-writeJson(metricsPath, metrics);
 
 // Also emit a small gen report
 const reportPath = path.resolve(reportOutPath);
@@ -3950,4 +3955,6 @@ ensureDir(path.dirname(reportPath));
 }
 
 console.log(`map:gen OK — wrote ${outPath} and ${publicOut}`);
-console.log(`metrics: ${metricsPath}`);
+if (metricsPath) {
+  console.log(`metrics: ${metricsPath}`);
+}

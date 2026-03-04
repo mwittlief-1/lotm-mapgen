@@ -623,8 +623,7 @@ export function computeMapMetrics(map, config) {
     derived,
     warnings: [],
     // Must be stable across map:gen and map:validate.
-    // Use the map artifact's generated_at stamp as the canonical timestamp.
-    generated_at: typeof map?.generated_at === "string" ? map.generated_at : nowIso()
+    generated_at: typeof map?.generated_at === "string" ? map.generated_at : null
   };
 
   // Soft target warnings
