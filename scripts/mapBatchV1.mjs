@@ -125,10 +125,23 @@ for (const seed of seeds) {
         borderQuality = genRep?.border_quality ?? null;
         const f = genRep?.remask?.frontier;
         if (f && (Array.isArray(f.ridge_idx) || Array.isArray(f.river_idx) || Array.isArray(f.ford_idx))) {
+          const ridge = Array.isArray(f.ridge_idx) ? f.ridge_idx : [];
+          const river = Array.isArray(f.river_idx) ? f.river_idx : [];
+          const ford = Array.isArray(f.ford_idx) ? f.ford_idx : [];
+          let tripoint_idx = null;
+          if (ford.length > 0) tripoint_idx = ford[0];
+          else if (ridge.length > 0 && river.length > 0) {
+            const riverSet = new Set(river);
+            const overlap = ridge.find((x) => riverSet.has(x));
+            if (Number.isInteger(overlap)) tripoint_idx = overlap;
+            else tripoint_idx = river[0];
+          } else if (river.length > 0) tripoint_idx = river[0];
+          else if (ridge.length > 0) tripoint_idx = ridge[0];
           overlay = {
-            ridge_idx: Array.isArray(f.ridge_idx) ? f.ridge_idx : [],
-            river_idx: Array.isArray(f.river_idx) ? f.river_idx : [],
-            ford_idx: Array.isArray(f.ford_idx) ? f.ford_idx : []
+            ridge_idx: ridge,
+            river_idx: river,
+            ford_idx: ford,
+            tripoint_idx
           };
         }
       }

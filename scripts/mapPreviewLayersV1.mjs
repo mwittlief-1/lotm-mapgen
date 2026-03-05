@@ -314,6 +314,14 @@ export function renderLayer({ map, ctx, layer, overlay = null }) {
         paintIdx(idxOf(q1, r1, map.width));
       }
     }
+
+    // Temporary visual marker for external-kingdom tripoint placeholder.
+    if (Number.isInteger(overlay?.tripoint_idx)) {
+      const tIdx = overlay.tripoint_idx;
+      if (tIdx >= 0 && tIdx < map.hexes.length && map.hexes[tIdx].tile_kind !== "void") {
+        paintHexAtIdx({ map, ctx, idx: tIdx, rgba: [255, 0, 180, 255], buf });
+      }
+    }
     return buf;
   }
 

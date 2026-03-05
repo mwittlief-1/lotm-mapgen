@@ -3907,6 +3907,35 @@ const seed_quota = Math.ceil(alphaQuota * avg);
   }
 }
 
+// Terrain + Hydrology painting pass (M3): lakes, drainage-based marsh, and frontier belts.
+// Run before county-border tuning so secondary county pass can snap to painted water/terrain.
+{
+  const debug = {};
+  paintTerrainHydrologyV1({
+    seed,
+    width,
+    height,
+    hexes,
+    landIdx: landIdxAll,
+    distToSea: distToSeaAll,
+    distToVoid: distToVoidAll,
+    distToMajorRiver: distToMajorRiverAll,
+    macroStyleId,
+    macroRidgeMask,
+    macroBasinId,
+    frontierRidgeMask,
+    frontierRiverMask,
+    frontierRiverFordMask,
+    estuaryIdxSet: new Set(estuaryTiles ?? []),
+    majorRiverIdxSet,
+    protectedIdxSet: seatProtect,
+    seatsIdx,
+    config,
+    debugOut: debug
+  });
+  terrainHydroSummary = debug;
+}
+
 // Derive fixed county loop order from FINAL seat positions (distance-to-center)
 const centerQ = Math.floor(width / 2);
 const centerR = Math.floor(height / 2);
@@ -3918,7 +3947,7 @@ const countyTargets = computeCountyTargetsEqualSplit({ landCount, countyCount, l
 // Assign counties via cost-aware geodesic Voronoi on the land graph.
 // This dramatically reduces gerrymandered "fingers" because regions are grown
 // by shortest-path wavefront, biased by the macro divider-cost field.
-const { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMax, avg: countyAvg, unassigned_land } = assignCountiesCostVoronoi({
+let { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMax, avg: countyAvg, unassigned_land } = assignCountiesCostVoronoi({
   width,
   height,
   hexes,
@@ -3933,6 +3962,167 @@ const { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMa
   protectedIdxSet: seatProtect,
   smooth: config?.mapgen?.counties?.voronoi_smooth
 });
+
+
+// Secondary county-border tuning pass (Task B): after baseline county assignment,
+// magnet boundary tiles toward strong hydro/terrain features while preserving contiguity.
+{
+  const tuneEnabled = config?.mapgen?.counties?.border_tune_enabled !== false;
+  if (tuneEnabled) {
+    const tuneIters = Math.max(0, Math.floor(Number(config?.mapgen?.counties?.border_tune_iters ?? 280)));
+    const magnetDist = Math.max(1, Math.floor(Number(config?.mapgen?.counties?.border_tune_magnet_dist ?? 6)));
+    const minCountyFloor = Math.max(40, Math.floor(Number(config?.mapgen?.counties?.border_tune_min_county_floor ?? Math.floor(landCount / (countyCount * 3)))));
+
+    const countyMembers = Array.from({ length: countyCount }, () => new Set());
+    for (const idx of landIdx) {
+      const ci = assignedCounty[idx];
+      if (ci >= 0 && ci < countyCount) countyMembers[ci].add(idx);
+    }
+
+    const featureTier = new Int16Array(hexes.length);
+    featureTier.fill(0);
+    const strongSources = [];
+    for (const idx of landIdx) {
+      const h = hexes[idx];
+      let t = 0;
+      if (h?.hydrology?.river_class === "major") t = Math.max(t, 6);
+      if (h?.hydrology?.water_kind === "lake") t = Math.max(t, 5);
+      if (h?.hydrology?.water_kind === "border_river") t = Math.max(t, 4);
+      if (h?.terrain === "mountains") t = Math.max(t, 3);
+      if (h?.terrain === "hills") t = Math.max(t, 1);
+      featureTier[idx] = t;
+      if (t >= 3) strongSources.push(idx);
+    }
+
+    const distToStrong = new Int16Array(hexes.length);
+    distToStrong.fill(-1);
+    {
+      const q = [];
+      for (const idx of strongSources) {
+        distToStrong[idx] = 0;
+        q.push(idx);
+      }
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        const cd = distToStrong[cur];
+        if (cd >= magnetDist + 2) continue;
+        for (const nb of neighborIdxs(cur)) {
+          if (!landIdxSet.has(nb)) continue;
+          if (distToStrong[nb] !== -1) continue;
+          distToStrong[nb] = cd + 1;
+          q.push(nb);
+        }
+      }
+    }
+
+    const seatIdxSet = new Set(seatsIdx);
+
+    const donorConnectedAfterRemoval = (countyIdx, removeIdx) => {
+      const members = countyMembers[countyIdx];
+      if (!members || !members.has(removeIdx)) return false;
+      if (members.size <= 1) return false;
+      let start = -1;
+      for (const x of members) {
+        if (x !== removeIdx) { start = x; break; }
+      }
+      if (start < 0) return false;
+      const seen = new Set([start]);
+      const q = [start];
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        for (const nb of neighborIdxs(cur)) {
+          if (nb === removeIdx) continue;
+          if (!members.has(nb)) continue;
+          if (seen.has(nb)) continue;
+          seen.add(nb);
+          q.push(nb);
+        }
+      }
+      return seen.size === (members.size - 1);
+    };
+
+    const localBoundaryScore = (idx, arr) => {
+      let s = 0;
+      const my = arr[idx];
+      for (const nb of neighborIdxs(idx)) {
+        if (!landIdxSet.has(nb)) continue;
+        if (arr[nb] === my) continue;
+        s += 1;
+        if (featureTier[idx] > 0 || featureTier[nb] > 0) s += Math.max(featureTier[idx], featureTier[nb]);
+      }
+      const d = distToStrong[idx];
+      if (Number.isFinite(d) && d >= 0 && d <= magnetDist) s += (magnetDist - d + 1) * 2;
+      return s;
+    };
+
+    let moves = 0;
+    const pickOrder = [...landIdx].sort((a, b) => (hash2(seedU32 ^ 0x55aa99cc, a, 8191) - hash2(seedU32 ^ 0x55aa99cc, b, 8191)) || (a - b));
+    for (let it = 0; it < tuneIters; it++) {
+      let movedThisIter = false;
+      for (let k = 0; k < pickOrder.length; k++) {
+        const idx = pickOrder[(k + it) % pickOrder.length];
+        const from = assignedCounty[idx];
+        if (from < 0 || from >= countyCount) continue;
+        if (seatIdxSet.has(idx)) continue;
+        if ((distToStrong[idx] < 0 || distToStrong[idx] > magnetDist) && featureTier[idx] === 0) continue;
+
+        const neighCounties = new Set();
+        let sameCt = 0;
+        for (const nb of neighborIdxs(idx)) {
+          if (!landIdxSet.has(nb)) continue;
+          const c = assignedCounty[nb];
+          if (c === from) sameCt++;
+          else if (c >= 0) neighCounties.add(c);
+        }
+        if (!neighCounties.size) continue;
+        if (sameCt === 0) continue;
+        if ((countyMembers[from]?.size ?? 0) <= minCountyFloor) continue;
+        if (!donorConnectedAfterRemoval(from, idx)) continue;
+
+        const before = localBoundaryScore(idx, assignedCounty);
+        let bestTo = -1;
+        let bestGain = 0;
+        for (const to of neighCounties) {
+          if (to === from) continue;
+          let touchTo = 0;
+          for (const nb of neighborIdxs(idx)) {
+            if (!landIdxSet.has(nb)) continue;
+            if (assignedCounty[nb] === to) touchTo++;
+          }
+          if (touchTo <= 0) continue;
+
+          assignedCounty[idx] = to;
+          const after = localBoundaryScore(idx, assignedCounty) + touchTo;
+          assignedCounty[idx] = from;
+          const gain = after - before;
+          if (gain > bestGain) {
+            bestGain = gain;
+            bestTo = to;
+          }
+        }
+
+        if (bestTo >= 0 && bestGain > 0) {
+          assignedCounty[idx] = bestTo;
+          countyMembers[from].delete(idx);
+          countyMembers[bestTo].add(idx);
+          moves++;
+          movedThisIter = true;
+          break;
+        }
+      }
+      if (!movedThisIter) break;
+    }
+
+    // recompute county size array for report fidelity
+    countySizeArr = countyMembers.map((s0) => s0.size);
+    countyMin = countySizeArr.reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY);
+    countyMax = countySizeArr.reduce((a, b) => Math.max(a, b), 0);
+    countyAvg = countySizeArr.reduce((a, b) => a + b, 0) / Math.max(1, countySizeArr.length);
+    if (remaskSummary) {
+      remaskSummary.county_tune = { enabled: true, moves, iters: tuneIters, magnet_dist: magnetDist };
+    }
+  }
+}
 
 const countyTiles = Array.from({ length: countyIds.length }, () => []);
 for (const idx of landIdx) {
@@ -3974,35 +4164,6 @@ for (let ci = 0; ci < counties.length; ci++) {
     hex_id: hexes[seatIdx].hex_id,
     is_capital: c.county_id === capitalCountyId
   });
-}
-
-// Terrain + Hydrology painting pass (M3): lakes, drainage-based marsh, and frontier belts.
-// IMPORTANT: runs after seats/counties are fixed so we don't perturb county shaping.
-{
-  const debug = {};
-  paintTerrainHydrologyV1({
-    seed,
-    width,
-    height,
-    hexes,
-    landIdx: landIdxAll,
-    distToSea: distToSeaAll,
-    distToVoid: distToVoidAll,
-    distToMajorRiver: distToMajorRiverAll,
-    macroStyleId,
-    macroRidgeMask,
-    macroBasinId,
-    frontierRidgeMask,
-    frontierRiverMask,
-    frontierRiverFordMask,
-    estuaryIdxSet: new Set(estuaryTiles ?? []),
-    majorRiverIdxSet,
-    protectedIdxSet: seatProtect,
-    seatsIdx,
-    config,
-    debugOut: debug
-  });
-  terrainHydroSummary = debug;
 }
 
 // Settlements (uses a helper that expects hexById)
