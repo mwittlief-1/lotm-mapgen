@@ -1215,7 +1215,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   // borderlands context reaches the megahex edge. Default: 10% of world radius.
   const worldEdgeBufferDefault = Math.max(2, Math.ceil(worldR * 0.10));
   const worldEdgeBuffer = Math.max(0, Math.floor(Number(remaskCfg?.world_edge_buffer ?? worldEdgeBufferDefault)));
-const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_hexes_land_target_tolerance_pct;
+  const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_hexes_land_target_tolerance_pct;
   const tolPct = Number.isFinite(Number(tolPctRaw)) ? Number(tolPctRaw) : 0.05;
   const landMin = Math.max(1, Math.floor(landTarget * (1 - Math.abs(tolPct))));
   const landMax = Math.max(landMin, Math.ceil(landTarget * (1 + Math.abs(tolPct))));
@@ -1223,8 +1223,24 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
   const reshaveEnabled = remaskCfg?.reshave_enabled !== false;
   const reshaveIters = Math.max(0, Math.floor(Number(remaskCfg?.reshave_iters ?? 600)));
   const reshaveTopK = Math.max(1, Math.floor(Number(remaskCfg?.reshave_top_k ?? 16)));
+	const reshaveLocalityBase = Math.max(1, Math.floor(Number(remaskCfg?.reshave_locality_base ?? 2)));
+	const reshaveLocalityMax = Math.max(reshaveLocalityBase, Math.floor(Number(remaskCfg?.reshave_locality_max ?? 4)));
+	const reshaveMinDelta = Math.max(0, Math.floor(Number(remaskCfg?.reshave_min_delta ?? 1)));
+	const reshaveRiverBonus = Math.max(0, Math.floor(Number(remaskCfg?.reshave_river_bonus ?? 0)));
+	const reshaveFordBonus = Math.max(0, Math.floor(Number(remaskCfg?.reshave_ford_bonus ?? 0)));
+	const reshaveRidgePenalty = Math.max(0, Math.floor(Number(remaskCfg?.reshave_ridge_penalty ?? 0)));
 	const coastalExclusionK = Math.max(0, Math.floor(Number(remaskCfg?.reshave_coastal_exclusion_k ?? 2)));
 	const straightPenaltyW = Math.max(0, Math.floor(Number(remaskCfg?.reshave_straight_penalty ?? 2500)));
+	const lineRunPenaltyW = Math.max(0, Math.floor(Number(remaskCfg?.reshave_line_run_penalty ?? 600)));
+	const phaseBandsRaw = Array.isArray(remaskCfg?.reshave_phase_bands) ? remaskCfg.reshave_phase_bands : [10, 6, 3];
+	const reshavePhaseBands = phaseBandsRaw
+	  .map((v) => Math.max(1, Math.floor(Number(v))))
+	  .filter((v, i, arr) => Number.isFinite(v) && v > 0 && arr.indexOf(v) === i);
+	const realmPerturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
+	const realmPerturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
+	const realmPerturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
+	const realmPerturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
+	const realmPerturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
 
   // Distance from each inWorld tile to the inWorld boundary (tiles adjacent to not-inWorld).
   // Used as a hard eligibility constraint for kingdom selection.
@@ -1245,72 +1261,6 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
         const ni = indexOf(nq, nr, width);
         if (!inWorld[ni]) { isBoundary = true; break; }
       }
-
-	// Identify ocean-connected sea (saltwater) so we can (a) avoid reshaping coasts and
-	// (b) allow converting ONLY inland water pockets (non-ocean sea) when the inland
-	// border is blocked by bays.
-	const oceanSea = new Uint8Array(total);
-	for (let i = 0; i < total; i++) {
-		if (!inWorld[i]) continue;
-		if (tile_kind[i] === "sea") oceanSea[i] = 1;
-	}
-	const oceanConnected = new Uint8Array(total);
-	{
-		const q = [];
-		const dirs0 = defaultNeighborDirs();
-		for (let i = 0; i < total; i++) {
-			if (!oceanSea[i]) continue;
-			// Seed floodfill from sea tiles on the world boundary.
-			if (distToWorldEdge[i] === 0) {
-				oceanConnected[i] = 1;
-				q.push(i);
-			}
-		}
-		for (let qi = 0; qi < q.length; qi++) {
-			const cur = q[qi];
-			const cq0 = cur % width;
-			const cr0 = Math.floor(cur / width);
-			for (const d of dirs0) {
-				const nq = cq0 + d.dq;
-				const nr = cr0 + d.dr;
-				if (!inBounds(nq, nr, width, height)) continue;
-				const ni = indexOf(nq, nr, width);
-				if (!oceanSea[ni]) continue;
-				if (oceanConnected[ni]) continue;
-				oceanConnected[ni] = 1;
-				q.push(ni);
-			}
-		}
-	}
-	// Distance to ocean-connected sea (for coastal exclusion belt).
-	const distToOcean = new Int16Array(total);
-	distToOcean.fill(-1);
-	{
-		const q = [];
-		const dirs0 = defaultNeighborDirs();
-		for (let i = 0; i < total; i++) {
-			if (!inWorld[i]) continue;
-			if (!oceanConnected[i]) continue;
-			distToOcean[i] = 0;
-			q.push(i);
-		}
-		for (let qi = 0; qi < q.length; qi++) {
-			const cur = q[qi];
-			const cd = distToOcean[cur];
-			const cq0 = cur % width;
-			const cr0 = Math.floor(cur / width);
-			for (const d of dirs0) {
-				const nq = cq0 + d.dq;
-				const nr = cr0 + d.dr;
-				if (!inBounds(nq, nr, width, height)) continue;
-				const ni = indexOf(nq, nr, width);
-				if (!inWorld[ni]) continue;
-				if (distToOcean[ni] !== -1) continue;
-				distToOcean[ni] = cd + 1;
-				q.push(ni);
-			}
-		}
-	}
       if (isBoundary) {
         distToWorldEdge[i] = 0;
         q.push(i);
@@ -1329,6 +1279,43 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
         if (!inWorld[ni]) continue;
         if (distToWorldEdge[ni] !== -1) continue;
         distToWorldEdge[ni] = cd + 1;
+        q.push(ni);
+      }
+    }
+  }
+
+  // Identify ocean-connected sea (saltwater) so we can (a) avoid reshaping coasts and
+  // (b) allow converting ONLY inland water pockets (non-ocean sea) when the inland
+  // border is blocked by bays.
+  const oceanSea = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    if (!inWorld[i]) continue;
+    if (tile_kind[i] === "sea") oceanSea[i] = 1;
+  }
+  const oceanConnected = new Uint8Array(total);
+  {
+    const q = [];
+    const dirs0 = defaultNeighborDirs();
+    for (let i = 0; i < total; i++) {
+      if (!oceanSea[i]) continue;
+      // Seed floodfill from sea tiles on the world boundary.
+      if (distToWorldEdge[i] === 0) {
+        oceanConnected[i] = 1;
+        q.push(i);
+      }
+    }
+    for (let qi = 0; qi < q.length; qi++) {
+      const cur = q[qi];
+      const cq0 = cur % width;
+      const cr0 = Math.floor(cur / width);
+      for (const d of dirs0) {
+        const nq = cq0 + d.dq;
+        const nr = cr0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (!oceanSea[ni]) continue;
+        if (oceanConnected[ni]) continue;
+        oceanConnected[ni] = 1;
         q.push(ni);
       }
     }
@@ -1769,6 +1756,154 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
   };
 
 
+	const touchesOceanSea = (i) => {
+		if (oceanConnected[i] === 1) return true;
+		const iq = i % width;
+		const ir = Math.floor(i / width);
+		const dirs0 = defaultNeighborDirs();
+		for (const d of dirs0) {
+			const nq = iq + d.dq;
+			const nr = ir + d.dr;
+			if (!inBounds(nq, nr, width, height)) continue;
+			const ni = indexOf(nq, nr, width);
+			if (!inWorld[ni]) continue;
+			if (oceanConnected[ni] === 1) return true;
+		}
+		return false;
+	};
+
+  const perturbRealmBoundary = () => {
+    if (!realmPerturbEnabled || realmPerturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
+
+    const dirs0 = defaultNeighborDirs();
+    const isMovable = (i) => {
+      if (!inWorld[i]) return false;
+      if (kernelKeep[i] === 1) return false;
+      if (coastalExclusionK > 0 && touchesOceanSea(i)) return false;
+      const tk = tile_kind[i];
+      if (tk === "land") return true;
+      if (tk === "sea" && oceanConnected[i] === 0) return true;
+      return false;
+    };
+
+    const isBoundary = (i) => {
+      if (!isMovable(i)) return false;
+      const inSel = selected[i] === 1;
+      const iq = i % width;
+      const ir = Math.floor(i / width);
+      for (const d of dirs0) {
+        const nq = iq + d.dq;
+        const nr = ir + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (!isMovable(ni)) continue;
+        if ((selected[ni] === 1) !== inSel) return true;
+      }
+      return false;
+    };
+
+    const boundaryDist = () => {
+      const distB = new Int16Array(total);
+      distB.fill(-1);
+      const q = [];
+      for (let i = 0; i < total; i++) {
+        if (!isBoundary(i)) continue;
+        distB[i] = 0;
+        q.push(i);
+      }
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        const cd = distB[cur];
+        if (cd >= realmPerturbBand) continue;
+        const cq = cur % width;
+        const cr = Math.floor(cur / width);
+        for (const d of dirs0) {
+          const nq = cq + d.dq;
+          const nr = cr + d.dr;
+          if (!inBounds(nq, nr, width, height)) continue;
+          const ni = indexOf(nq, nr, width);
+          if (!isMovable(ni)) continue;
+          if (distB[ni] !== -1) continue;
+          distB[ni] = cd + 1;
+          q.push(ni);
+        }
+      }
+      return distB;
+    };
+
+    const featurePush = (i) => {
+      let f = 0;
+      if (frontierRiverMask?.[i] === 1) f += 1.0;
+      if (frontierRiverFordMask?.[i] === 1) f += 0.4;
+      if (frontierRidgeMask?.[i] === 1) f += 0.7;
+      return f;
+    };
+
+    const ensurePrimaryConnected = () => {
+      const seen = new Uint8Array(total);
+      let bestComp = [];
+      for (let i = 0; i < total; i++) {
+        if (selected[i] !== 1 || seen[i]) continue;
+        const comp = [];
+        const q = [i];
+        seen[i] = 1;
+        for (let qi = 0; qi < q.length; qi++) {
+          const cur = q[qi];
+          comp.push(cur);
+          const cq = cur % width;
+          const cr = Math.floor(cur / width);
+          for (const d of dirs0) {
+            const nq = cq + d.dq;
+            const nr = cr + d.dr;
+            if (!inBounds(nq, nr, width, height)) continue;
+            const ni = indexOf(nq, nr, width);
+            if (selected[ni] !== 1 || seen[ni]) continue;
+            seen[ni] = 1;
+            q.push(ni);
+          }
+        }
+        if (comp.length > bestComp.length) bestComp = comp;
+      }
+      if (!bestComp.length) return;
+      const keep = new Uint8Array(total);
+      for (const i of bestComp) keep[i] = 1;
+      for (let i = 0; i < total; i++) if (selected[i] === 1 && keep[i] !== 1) selected[i] = 0;
+    };
+
+    let flips = 0;
+    for (let it = 0; it < realmPerturbIterations; it++) {
+      const distB = boundaryDist();
+      const changes = [];
+      for (let i = 0; i < total; i++) {
+        if (!isMovable(i)) continue;
+        const db = distB[i];
+        if (db < 0 || db > realmPerturbBand) continue;
+        if (!isBoundary(i)) continue;
+        const n = ((hash2(seedU32 ^ 0x7f4a7c15, i ^ (it * 991), 0) / 0xffffffff) * 2) - 1;
+        const edgeW = 1 - (db / Math.max(1, realmPerturbBand));
+        const m = featurePush(i) * realmPerturbMagnet;
+        const scoreNow = n * realmPerturbNoise * edgeW + m;
+        if (selected[i] === 0 && scoreNow > 0.58) changes.push([i, 1]);
+        if (selected[i] === 1 && scoreNow < -0.62 && kernelKeep[i] !== 1) changes.push([i, 0]);
+      }
+      for (const [i, v] of changes) {
+        if (v === 1 && selected[i] === 0) {
+          if (tile_kind[i] === "sea" && oceanConnected[i] === 0) tile_kind[i] = "land";
+          selected[i] = 1;
+          flips++;
+        } else if (v === 0 && selected[i] === 1) {
+          selected[i] = 0;
+          flips++;
+        }
+      }
+      ensurePrimaryConnected();
+      trimToTarget(landTarget);
+      growToTarget(landTarget);
+    }
+
+    return { enabled: true, flips, iters: realmPerturbIterations, band: realmPerturbBand };
+  };
+
   // Border "reshave" pass: improve frontier scalloping and geographic snapping by
   // locally swapping high-cost border tiles for lower-cost neighbor tiles.
   // This is deterministic and respects: protected/kernelKeep, worldEdgeBuffer, and connectivity.
@@ -1784,11 +1919,12 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
 		const collectBoundary = () => {
       const out = [];
       for (let i = 0; i < total; i++) {
+        if (activeBand && activeBand[i] !== 1) continue;
         if (!inWorld[i]) continue;
         if (tile_kind[i] !== "land") continue;
         if (!isBoundarySel(i)) continue;
-				// Do not reshape near true ocean coastline.
-				if (coastalExclusionK > 0 && distToOcean[i] >= 0 && distToOcean[i] <= coastalExclusionK) continue;
+				// Do not reshape true ocean coastline tiles.
+				if (coastalExclusionK > 0 && touchesOceanSea(i)) continue;
         if (kernelKeep[i] === 1) continue;
         out.push(i);
       }
@@ -1796,50 +1932,63 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
     };
 
 
-		// Ocean-connected sea mask (saltwater) for coastal exclusion + inland-water detection.
-		// 1 = connected to world boundary via sea tiles, 0 = not ocean-connected (inland water pockets).
-		const oceanConnectedSea = new Uint8Array(total);
-		{
+
+
+
+		let activeBand = null;
+		const computeBandMask = (bandK) => {
+			if (!(bandK > 0)) return null;
+			const mask = new Uint8Array(total);
+			const distBand = new Int16Array(total);
+			distBand.fill(-1);
 			const q = [];
-			const dirs0 = defaultNeighborDirs();
 			for (let i = 0; i < total; i++) {
 				if (!inWorld[i]) continue;
-				if (tile_kind[i] !== "sea") continue;
-				if (distToWorldEdge[i] !== 0) continue;
-				oceanConnectedSea[i] = 1;
+				const tk = tile_kind[i];
+				if (!(tk === "land" || (tk === "sea" && oceanConnected[i] === 0))) continue;
+				if (!(isBoundarySel(i) || isFrontierUns(i))) continue;
+				distBand[i] = 0;
+				mask[i] = 1;
 				q.push(i);
 			}
 			for (let qi = 0; qi < q.length; qi++) {
 				const cur = q[qi];
-				const cq0 = cur % width;
-				const cr0 = Math.floor(cur / width);
-				for (const d of dirs0) {
-					const nq = cq0 + d.dq;
-					const nr = cr0 + d.dr;
+				const cd = distBand[cur];
+				if (cd >= bandK) continue;
+				const cq = cur % width;
+				const cr = Math.floor(cur / width);
+				for (const d of defaultNeighborDirs()) {
+					const nq = cq + d.dq;
+					const nr = cr + d.dr;
 					if (!inBounds(nq, nr, width, height)) continue;
 					const ni = indexOf(nq, nr, width);
 					if (!inWorld[ni]) continue;
-					if (tile_kind[ni] !== "sea") continue;
-					if (oceanConnectedSea[ni] === 1) continue;
-					oceanConnectedSea[ni] = 1;
+					const tk = tile_kind[ni];
+					if (!(tk === "land" || (tk === "sea" && oceanConnected[ni] === 0))) continue;
+					if (distBand[ni] !== -1) continue;
+					distBand[ni] = cd + 1;
+					mask[ni] = 1;
 					q.push(ni);
 				}
 			}
-		}
+			return mask;
+		};
 
 		const collectFrontier = () => {
       const out = [];
       for (let i = 0; i < total; i++) {
+        if (activeBand && activeBand[i] !== 1) continue;
         if (!inWorld[i]) continue;
 				// Allow frontier to include inland water pockets (sea that is NOT ocean-connected),
 				// but never allow reshaping the coastline or the ocean itself.
 				const tk = tile_kind[i];
-				if (!(tk === "land" || (tk === "sea" && oceanConnectedSea[i] === 0))) continue;
+				if (!(tk === "land" || (tk === "sea" && oceanConnected[i] === 0))) continue;
         if (!isFrontierUns(i)) continue;
-        // Keep the world-edge buffer invariant.
-        if (worldEdgeBuffer > 0 && distToWorldEdge[i] >= 0 && distToWorldEdge[i] < worldEdgeBuffer) continue;
-				// Exclude coastal belt.
-				if (coastalExclusionK > 0 && distToOcean[i] >= 0 && distToOcean[i] <= coastalExclusionK) continue;
+        // Keep a near-edge guard for reshave, but allow limited movement inside the buffer band.
+        const reshaveEdgeGuard = Math.max(0, worldEdgeBuffer - 2);
+        if (reshaveEdgeGuard > 0 && distToWorldEdge[i] >= 0 && distToWorldEdge[i] < reshaveEdgeGuard) continue;
+				// Exclude true coastline/ocean-adjacent frontier, but keep inland frontier usable.
+				if (coastalExclusionK > 0 && touchesOceanSea(i)) continue;
         out.push(i);
       }
       return out;
@@ -1863,6 +2012,33 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
 			return s0;
 		};
 
+		const straightRunLen = (i) => {
+			if (selected[i] !== 1) return 0;
+			const iq = i % width;
+			const ir = Math.floor(i / width);
+			const dirs0 = defaultNeighborDirs();
+			let best = 0;
+			for (let k = 0; k < 3; k++) {
+				const a = dirs0[k];
+				const b = dirs0[k + 3];
+				let len = 1;
+				for (const d of [a, b]) {
+					let tq = iq + d.dq;
+					let tr = ir + d.dr;
+					while (inBounds(tq, tr, width, height)) {
+						const ti = indexOf(tq, tr, width);
+						if (selected[ti] !== 1) break;
+						len++;
+						tq += d.dq;
+						tr += d.dr;
+						if (len >= 12) break;
+					}
+				}
+				if (len > best) best = len;
+			}
+			return best;
+		};
+
     const pickFromSorted = (arr, topK, iterTag) => {
       if (arr.length === 0) return -1;
       const k = Math.min(arr.length, topK);
@@ -1870,53 +2046,186 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
       return arr[j];
     };
 
-    // Two-phase reshave to avoid "no-op" stalls:
-    //  A) Add-first expansion into best frontier tiles (connectivity-safe), up to landMax.
-    //  B) Trim back toward landTarget by removing worst boundary tiles, using strict
-    //     connectivity checks (but now removals are much more likely to succeed).
+    // Swap-first reshave to avoid ct==target stalls:
+    //  A) When ct is in-range, perform paired add+del swaps each iteration.
+    //     This allows border movement without requiring net growth/shrink.
+    //  B) If ct drifts outside [landMin, landMax], do one-sided correction.
+    //  C) If we stall, gradually widen locality to find legal nearby swaps.
 
     let adds = 0;
     let dels = 0;
+    let swaps = 0;
+    let stalledIters = 0;
+    let attempts = 0;
+    let rejectLocality = 0;
+    let rejectDelta = 0;
+    let rejectConnectivity = 0;
+    let rejectNoViable = 0;
 
-    // Phase A: expand up to landMax (or until we run out of iterations).
-    const phaseA_iters = Math.max(0, Math.floor(reshaveIters * 0.6));
-    for (let it = 0; it < phaseA_iters; it++) {
-      if (ct >= landMax) break;
-      const frontier = collectFrontier();
-      if (frontier.length === 0) break;
-			frontier.sort((a, b) => ((dist[a] + straightPenaltyW * straightPairs(a)) - (dist[b] + straightPenaltyW * straightPairs(b))) || (a - b));
-      const addIdx = pickFromSorted(frontier, reshaveTopK, (it + 1) * 41);
-      if (addIdx >= 0 && selected[addIdx] === 0) {
-				// If adding an inland water pocket, convert it to land so it becomes valid borderlands.
-				if (tile_kind[addIdx] === "sea" && oceanConnectedSea[addIdx] === 0) {
-					tile_kind[addIdx] = "land";
-				}
-        selected[addIdx] = 1;
-        ct++;
-        adds++;
+    const featureTerm = (i) => {
+      let t = 0;
+      if (frontierRidgeMask[i] === 1) t += reshaveRidgePenalty;
+      if (frontierRiverMask[i] === 1) {
+        t -= (frontierRiverFordMask[i] === 1 ? reshaveFordBonus : reshaveRiverBonus);
       }
+      return t;
+    };
+
+    const score = (i) => {
+      const runPenalty = selected[i] === 1 ? (lineRunPenaltyW * Math.max(0, straightRunLen(i) - 2)) : 0;
+      return dist[i] + straightPenaltyW * straightPairs(i) + runPenalty + featureTerm(i);
+    };
+
+    const iterBudget = Math.max(0, Math.min(reshaveIters, 240));
+    const phaseBands = reshavePhaseBands.length ? reshavePhaseBands : [10, 6, 3];
+    const phaseBudgetBase = Math.max(1, Math.floor(iterBudget / phaseBands.length));
+    let itGlobal = 0;
+    const phaseStats = [];
+    for (let p = 0; p < phaseBands.length && itGlobal < iterBudget; p++) {
+      const phaseBand = phaseBands[p];
+      activeBand = computeBandMask(phaseBand);
+      const remaining = iterBudget - itGlobal;
+      const phaseBudget = (p === phaseBands.length - 1) ? remaining : Math.min(remaining, phaseBudgetBase);
+      let phaseMoves = 0;
+      for (let pit = 0; pit < phaseBudget; pit++, itGlobal++) {
+        const it = itGlobal;
+        const frontier = collectFrontier();
+        const boundary = collectBoundary();
+        if (frontier.length === 0 && boundary.length === 0) break;
+
+      frontier.sort((a, b) => (score(a) - score(b)) || (a - b));
+      boundary.sort((a, b) => (score(b) - score(a)) || (a - b));
+
+      const inBand = ct >= landMin && ct <= landMax;
+
+      // Preferred mode: paired swap when count is healthy.
+      if (inBand && frontier.length > 0 && boundary.length > 0) {
+        const widenSteps = Math.floor(stalledIters / 30);
+        const kABase = Math.max(1, reshaveTopK);
+        const kDBasis = Math.max(1, reshaveTopK);
+        const kA = Math.min(frontier.length, kABase + (widenSteps * kABase));
+        const kD = Math.min(boundary.length, kDBasis + (widenSteps * kDBasis));
+        const a0 = hash2(seedU32, (it + 1) * 41, kA) % kA;
+        const d0 = hash2(seedU32, (it + 1) * 53, kD) % kD;
+        const localityCap = Math.min(reshaveLocalityMax, reshaveLocalityBase + Math.floor(stalledIters / 40));
+
+        let moved = false;
+        for (let ao = 0; ao < kA && !moved; ao++) {
+          const addIdx = frontier[(a0 + ao) % kA];
+          if (addIdx < 0 || selected[addIdx] !== 0) continue;
+          const aq = addIdx % width;
+          const ar = Math.floor(addIdx / width);
+          const addScore = score(addIdx);
+
+          // Collect viable local deletion candidates near this add tile first.
+          const viableDels = [];
+          for (let doff = 0; doff < kD; doff++) {
+            const delIdx = boundary[(d0 + doff) % kD];
+            if (delIdx < 0 || selected[delIdx] !== 1) continue;
+            if (addIdx === delIdx) continue;
+            const dq = delIdx % width;
+            const dr = Math.floor(delIdx / width);
+            const span = axialDist(aq, ar, dq, dr);
+            if (span > localityCap) {
+              rejectLocality++;
+              continue;
+            }
+            const delta = score(delIdx) - addScore;
+            const minDeltaNow = Math.max(0, reshaveMinDelta - Math.floor(stalledIters / 80));
+            if (delta < minDeltaNow) {
+              rejectDelta++;
+              continue;
+            }
+            viableDels.push(delIdx);
+          }
+          if (!viableDels.length) {
+            rejectNoViable++;
+            continue;
+          }
+
+          // Deterministically pick one viable local deletion candidate for this add tile.
+          const pick = hash2(seedU32 ^ (addIdx >>> 0), (it + 1) * 67, viableDels.length) % viableDels.length;
+          const delIdx = viableDels[pick];
+          attempts++;
+          const wasInlandSea = tile_kind[addIdx] === "sea" && oceanConnected[addIdx] === 0;
+          if (wasInlandSea) tile_kind[addIdx] = "land";
+          selected[addIdx] = 1;
+          selected[delIdx] = 0;
+          const cc2 = connectedCount();
+          if (cc2 === ct) {
+            adds++;
+            dels++;
+            swaps++;
+            moved = true;
+            phaseMoves++;
+            stalledIters = 0;
+            break;
+          }
+          rejectConnectivity++;
+          // Revert on failed connectivity.
+          selected[delIdx] = 1;
+          selected[addIdx] = 0;
+          if (wasInlandSea) tile_kind[addIdx] = "sea";
+        }
+        if (moved) continue;
+      }
+
+      // Count correction fallback: grow if under target band.
+      if (ct < landMin && frontier.length > 0) {
+        const addIdx = pickFromSorted(frontier, reshaveTopK, (it + 1) * 59);
+        if (addIdx >= 0 && selected[addIdx] === 0) {
+          if (tile_kind[addIdx] === "sea" && oceanConnected[addIdx] === 0) {
+            tile_kind[addIdx] = "land";
+          }
+          selected[addIdx] = 1;
+          ct++;
+          adds++;
+          phaseMoves++;
+          stalledIters = 0;
+          continue;
+        }
+      }
+
+      // Count correction fallback: trim if over target band.
+      if (ct > landMax && boundary.length > 0) {
+        const delIdx = pickFromSorted(boundary, reshaveTopK, (it + 1) * 61);
+        if (delIdx >= 0 && selected[delIdx] === 1) {
+          selected[delIdx] = 0;
+          const cc2 = connectedCount();
+          if (cc2 === (ct - 1)) {
+            ct--;
+            dels++;
+            phaseMoves++;
+            stalledIters = 0;
+            continue;
+          }
+          selected[delIdx] = 1;
+        }
+      }
+
+      // No legal move this iteration.
+      stalledIters++;
+      }
+      phaseStats.push({ band: phaseBand, moves: phaseMoves });
+      if (phaseMoves === 0 && p >= 1) break;
     }
 
-    // Phase B: trim back toward landTarget (or landMin) by removing worst boundary tiles.
-    const phaseB_iters = Math.max(0, reshaveIters - phaseA_iters);
-    for (let it = 0; it < phaseB_iters; it++) {
-      if (ct <= landTarget || ct <= landMin) break;
-      const boundary = collectBoundary();
-      if (boundary.length === 0) break;
-			boundary.sort((a, b) => ((dist[b] + straightPenaltyW * straightPairs(b)) - (dist[a] + straightPenaltyW * straightPairs(a))) || (a - b));
-      const delIdx = pickFromSorted(boundary, reshaveTopK, (it + 1) * 53);
-      if (delIdx < 0 || selected[delIdx] !== 1) continue;
-      selected[delIdx] = 0;
-      const cc2 = connectedCount();
-      if (cc2 !== (ct - 1)) {
-        selected[delIdx] = 1;
-        continue;
-      }
-      ct--;
-      dels++;
-    }
-
-    return { iters: reshaveIters, swaps: 0, adds, dels, startCount: ct0, endCount: ct };
+    return {
+      iters: iterBudget,
+      swaps,
+      adds,
+      dels,
+      startCount: ct0,
+      endCount: ct,
+      attempts,
+      rejected: {
+        locality: rejectLocality,
+        delta: rejectDelta,
+        connectivity: rejectConnectivity,
+        no_viable_pair: rejectNoViable,
+      },
+      phases: phaseStats,
+    };
   };
 
   // Execute hole fill, then re-balance count, then final sanity passes.
@@ -1931,6 +2240,8 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
   trimToTarget(landTarget);
   growToTarget(landTarget);
 
+  // Realm-boundary perturbation first (coastline-like shape pass), then local reshave.
+  const realmPerturbSummary = perturbRealmBoundary();
   // Border reshaping (scalloping/snap): optional, deterministic.
   const reshaveSummary = borderReshave();
   // Final connectivity assertion: if somehow broken, fail fast (this is a hard invariant).
@@ -1955,6 +2266,7 @@ const tolPctRaw = remaskCfg?.land_target_tolerance_pct ?? config?.scale?.realm_h
       selected: finalCt,
       holesFilled: holesAdded,
       reshave: reshaveSummary,
+      realm_perturb: realmPerturbSummary,
 
       shape: {
         bins: shapeBins,
@@ -3022,24 +3334,16 @@ const majorRiverIdxSet = new Set();
 let majorRiverPathIdx = null;
 let majorRiverPathsIdx = null;
 
-// Constrain major-river generation to the primary kingdom only.
-// (Borderlands land is still "land" for terrain continuity, but the major river is a
-// county divider and must not wander into borderlands.)
-const tile_kind_primary = tile_kind.slice();
-for (let i = 0; i < tile_kind_primary.length; i++) {
-  if (!inWorld[i]) continue;
-  if (tile_kind_primary[i] !== "land") continue;
-  if (primaryMask[i] !== 1) {
-    tile_kind_primary[i] = "sea";
-  }
-}
+// Generate the river network across all in-world land so hydrology can continue
+// naturally through borderlands as well as the primary kingdom.
+const tile_kind_hydro = tile_kind;
 
 if (river_end && Number.isInteger(river_end.idx)) {
   let startIdx = null;
   let bestD = -1;
   for (let i = 0; i < tile_kind.length; i++) {
     if (!inWorld[i]) continue;
-    if (tile_kind_primary[i] !== "land") continue;
+    if (tile_kind_hydro[i] !== "land") continue;
     const q = i % width;
     const r = Math.floor(i / width);
     const d = axialDist(q, r, river_end.q, river_end.r);
@@ -3047,7 +3351,7 @@ if (river_end && Number.isInteger(river_end.idx)) {
   }
 
   if (startIdx != null) {
-    const pathIdx = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_primary, startIdx, endIdx: river_end.idx, seed, config, tag: "major" });
+    const pathIdx = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_hydro, startIdx, endIdx: river_end.idx, seed, config, tag: "major" });
     if (pathIdx) {
       majorRiverPathIdx = pathIdx;
       for (const idx of pathIdx) majorRiverIdxSet.add(idx);
@@ -3080,7 +3384,7 @@ if (river_end && Number.isInteger(river_end.idx)) {
               if (!inBounds(nq, nr, width, height)) continue;
               const ni = indexOf(nq, nr, width);
               if (!inWorld[ni]) continue;
-              if (tile_kind_primary[ni] !== "land") continue;
+              if (tile_kind_hydro[ni] !== "land") continue;
               if (distToTrunk[ni] !== -1) continue;
               distToTrunk[ni] = cd + 1;
               q.push(ni);
@@ -3095,7 +3399,7 @@ if (river_end && Number.isInteger(river_end.idx)) {
         const jR = Math.floor(joinIdx / width);
         for (let i = 0; i < tile_kind.length; i++) {
           if (!inWorld[i]) continue;
-          if (tile_kind_primary[i] !== "land") continue;
+          if (tile_kind_hydro[i] !== "land") continue;
           if (majorRiverIdxSet.has(i)) continue;
           const q = i % width;
           const r = Math.floor(i / width);
@@ -3110,7 +3414,7 @@ if (river_end && Number.isInteger(river_end.idx)) {
 
         if (tribStart != null) {
           const tribSeed = `${seed}|tributary_v1`;
-          const tribPath = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_primary, startIdx: tribStart, endIdx: joinIdx, seed: tribSeed, config, tag: "tributary" });
+          const tribPath = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_hydro, startIdx: tribStart, endIdx: joinIdx, seed: tribSeed, config, tag: "tributary" });
           if (tribPath && tribPath.length >= 6) {
             majorRiverPathsIdx.push(tribPath);
             for (const idx of tribPath) majorRiverIdxSet.add(idx);
@@ -3744,6 +4048,35 @@ const seed_quota = Math.ceil(alphaQuota * avg);
   }
 }
 
+// Terrain + Hydrology painting pass (M3): lakes, drainage-based marsh, and frontier belts.
+// Run before county-border tuning so secondary county pass can snap to painted water/terrain.
+{
+  const debug = {};
+  paintTerrainHydrologyV1({
+    seed,
+    width,
+    height,
+    hexes,
+    landIdx: landIdxAll,
+    distToSea: distToSeaAll,
+    distToVoid: distToVoidAll,
+    distToMajorRiver: distToMajorRiverAll,
+    macroStyleId,
+    macroRidgeMask,
+    macroBasinId,
+    frontierRidgeMask,
+    frontierRiverMask,
+    frontierRiverFordMask,
+    estuaryIdxSet: new Set(estuaryTiles ?? []),
+    majorRiverIdxSet,
+    protectedIdxSet: seatProtect,
+    seatsIdx,
+    config,
+    debugOut: debug
+  });
+  terrainHydroSummary = debug;
+}
+
 // Derive fixed county loop order from FINAL seat positions (distance-to-center)
 const centerQ = Math.floor(width / 2);
 const centerR = Math.floor(height / 2);
@@ -3755,7 +4088,7 @@ const countyTargets = computeCountyTargetsEqualSplit({ landCount, countyCount, l
 // Assign counties via cost-aware geodesic Voronoi on the land graph.
 // This dramatically reduces gerrymandered "fingers" because regions are grown
 // by shortest-path wavefront, biased by the macro divider-cost field.
-const { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMax, avg: countyAvg, unassigned_land } = assignCountiesCostVoronoi({
+let { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMax, avg: countyAvg, unassigned_land } = assignCountiesCostVoronoi({
   width,
   height,
   hexes,
@@ -3770,6 +4103,167 @@ const { assignedCounty, countySize: countySizeArr, min: countyMin, max: countyMa
   protectedIdxSet: seatProtect,
   smooth: config?.mapgen?.counties?.voronoi_smooth
 });
+
+
+// Secondary county-border tuning pass (Task B): after baseline county assignment,
+// magnet boundary tiles toward strong hydro/terrain features while preserving contiguity.
+{
+  const tuneEnabled = config?.mapgen?.counties?.border_tune_enabled !== false;
+  if (tuneEnabled) {
+    const tuneIters = Math.max(0, Math.floor(Number(config?.mapgen?.counties?.border_tune_iters ?? 280)));
+    const magnetDist = Math.max(1, Math.floor(Number(config?.mapgen?.counties?.border_tune_magnet_dist ?? 6)));
+    const minCountyFloor = Math.max(40, Math.floor(Number(config?.mapgen?.counties?.border_tune_min_county_floor ?? Math.floor(landCount / (countyCount * 3)))));
+
+    const countyMembers = Array.from({ length: countyCount }, () => new Set());
+    for (const idx of landIdx) {
+      const ci = assignedCounty[idx];
+      if (ci >= 0 && ci < countyCount) countyMembers[ci].add(idx);
+    }
+
+    const featureTier = new Int16Array(hexes.length);
+    featureTier.fill(0);
+    const strongSources = [];
+    for (const idx of landIdx) {
+      const h = hexes[idx];
+      let t = 0;
+      if (h?.hydrology?.river_class === "major") t = Math.max(t, 6);
+      if (h?.hydrology?.water_kind === "lake") t = Math.max(t, 5);
+      if (h?.hydrology?.water_kind === "border_river") t = Math.max(t, 4);
+      if (h?.terrain === "mountains") t = Math.max(t, 3);
+      if (h?.terrain === "hills") t = Math.max(t, 1);
+      featureTier[idx] = t;
+      if (t >= 3) strongSources.push(idx);
+    }
+
+    const distToStrong = new Int16Array(hexes.length);
+    distToStrong.fill(-1);
+    {
+      const q = [];
+      for (const idx of strongSources) {
+        distToStrong[idx] = 0;
+        q.push(idx);
+      }
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        const cd = distToStrong[cur];
+        if (cd >= magnetDist + 2) continue;
+        for (const nb of neighborIdxs(cur)) {
+          if (!landIdxSet.has(nb)) continue;
+          if (distToStrong[nb] !== -1) continue;
+          distToStrong[nb] = cd + 1;
+          q.push(nb);
+        }
+      }
+    }
+
+    const seatIdxSet = new Set(seatsIdx);
+
+    const donorConnectedAfterRemoval = (countyIdx, removeIdx) => {
+      const members = countyMembers[countyIdx];
+      if (!members || !members.has(removeIdx)) return false;
+      if (members.size <= 1) return false;
+      let start = -1;
+      for (const x of members) {
+        if (x !== removeIdx) { start = x; break; }
+      }
+      if (start < 0) return false;
+      const seen = new Set([start]);
+      const q = [start];
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        for (const nb of neighborIdxs(cur)) {
+          if (nb === removeIdx) continue;
+          if (!members.has(nb)) continue;
+          if (seen.has(nb)) continue;
+          seen.add(nb);
+          q.push(nb);
+        }
+      }
+      return seen.size === (members.size - 1);
+    };
+
+    const localBoundaryScore = (idx, arr) => {
+      let s = 0;
+      const my = arr[idx];
+      for (const nb of neighborIdxs(idx)) {
+        if (!landIdxSet.has(nb)) continue;
+        if (arr[nb] === my) continue;
+        s += 1;
+        if (featureTier[idx] > 0 || featureTier[nb] > 0) s += Math.max(featureTier[idx], featureTier[nb]);
+      }
+      const d = distToStrong[idx];
+      if (Number.isFinite(d) && d >= 0 && d <= magnetDist) s += (magnetDist - d + 1) * 2;
+      return s;
+    };
+
+    let moves = 0;
+    const pickOrder = [...landIdx].sort((a, b) => (hash2(seedU32 ^ 0x55aa99cc, a, 8191) - hash2(seedU32 ^ 0x55aa99cc, b, 8191)) || (a - b));
+    for (let it = 0; it < tuneIters; it++) {
+      let movedThisIter = false;
+      for (let k = 0; k < pickOrder.length; k++) {
+        const idx = pickOrder[(k + it) % pickOrder.length];
+        const from = assignedCounty[idx];
+        if (from < 0 || from >= countyCount) continue;
+        if (seatIdxSet.has(idx)) continue;
+        if ((distToStrong[idx] < 0 || distToStrong[idx] > magnetDist) && featureTier[idx] === 0) continue;
+
+        const neighCounties = new Set();
+        let sameCt = 0;
+        for (const nb of neighborIdxs(idx)) {
+          if (!landIdxSet.has(nb)) continue;
+          const c = assignedCounty[nb];
+          if (c === from) sameCt++;
+          else if (c >= 0) neighCounties.add(c);
+        }
+        if (!neighCounties.size) continue;
+        if (sameCt === 0) continue;
+        if ((countyMembers[from]?.size ?? 0) <= minCountyFloor) continue;
+        if (!donorConnectedAfterRemoval(from, idx)) continue;
+
+        const before = localBoundaryScore(idx, assignedCounty);
+        let bestTo = -1;
+        let bestGain = 0;
+        for (const to of neighCounties) {
+          if (to === from) continue;
+          let touchTo = 0;
+          for (const nb of neighborIdxs(idx)) {
+            if (!landIdxSet.has(nb)) continue;
+            if (assignedCounty[nb] === to) touchTo++;
+          }
+          if (touchTo <= 0) continue;
+
+          assignedCounty[idx] = to;
+          const after = localBoundaryScore(idx, assignedCounty) + touchTo;
+          assignedCounty[idx] = from;
+          const gain = after - before;
+          if (gain > bestGain) {
+            bestGain = gain;
+            bestTo = to;
+          }
+        }
+
+        if (bestTo >= 0 && bestGain > 0) {
+          assignedCounty[idx] = bestTo;
+          countyMembers[from].delete(idx);
+          countyMembers[bestTo].add(idx);
+          moves++;
+          movedThisIter = true;
+          break;
+        }
+      }
+      if (!movedThisIter) break;
+    }
+
+    // recompute county size array for report fidelity
+    countySizeArr = countyMembers.map((s0) => s0.size);
+    countyMin = countySizeArr.reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY);
+    countyMax = countySizeArr.reduce((a, b) => Math.max(a, b), 0);
+    countyAvg = countySizeArr.reduce((a, b) => a + b, 0) / Math.max(1, countySizeArr.length);
+    if (remaskSummary) {
+      remaskSummary.county_tune = { enabled: true, moves, iters: tuneIters, magnet_dist: magnetDist };
+    }
+  }
+}
 
 const countyTiles = Array.from({ length: countyIds.length }, () => []);
 for (const idx of landIdx) {
@@ -3811,35 +4305,6 @@ for (let ci = 0; ci < counties.length; ci++) {
     hex_id: hexes[seatIdx].hex_id,
     is_capital: c.county_id === capitalCountyId
   });
-}
-
-// Terrain + Hydrology painting pass (M3): lakes, drainage-based marsh, and frontier belts.
-// IMPORTANT: runs after seats/counties are fixed so we don't perturb county shaping.
-{
-  const debug = {};
-  paintTerrainHydrologyV1({
-    seed,
-    width,
-    height,
-    hexes,
-    landIdx: landIdxAll,
-    distToSea: distToSeaAll,
-    distToVoid: distToVoidAll,
-    distToMajorRiver: distToMajorRiverAll,
-    macroStyleId,
-    macroRidgeMask,
-    macroBasinId,
-    frontierRidgeMask,
-    frontierRiverMask,
-    frontierRiverFordMask,
-    estuaryIdxSet: new Set(estuaryTiles ?? []),
-    majorRiverIdxSet,
-    protectedIdxSet: seatProtect,
-    seatsIdx,
-    config,
-    debugOut: debug
-  });
-  terrainHydroSummary = debug;
 }
 
 // Settlements (uses a helper that expects hexById)
@@ -3913,6 +4378,107 @@ ensureDir(path.dirname(reportPath));
     }
   }
 
+
+  const computeRemaskBorderQuality = () => {
+    const dirs = defaultNeighborDirs();
+    const selected = new Uint8Array(hexes.length);
+    for (let i = 0; i < hexes.length; i++) {
+      const h = hexes[i];
+      if (h?.tile_kind === "land" && h?.county_id) selected[i] = 1;
+    }
+
+    const straightPairs = (i) => {
+      const q0 = i % width;
+      const r0 = Math.floor(i / width);
+      let s0 = 0;
+      for (let k = 0; k < 3; k++) {
+        const a = dirs[k];
+        const b = dirs[k + 3];
+        const aq = q0 + a.dq;
+        const ar = r0 + a.dr;
+        const bq = q0 + b.dq;
+        const br = r0 + b.dr;
+        const aSel = inBounds(aq, ar, width, height) ? (selected[indexOf(aq, ar, width)] === 1) : false;
+        const bSel = inBounds(bq, br, width, height) ? (selected[indexOf(bq, br, width)] === 1) : false;
+        if (aSel && bSel) s0++;
+      }
+      return s0;
+    };
+
+    let borderTiles = 0;
+    let inlandBorderTiles = 0;
+    let riverAdj = 0;
+    let fordAdj = 0;
+    let ridgeAdj = 0;
+    let highStraightTiles = 0;
+
+    for (let i = 0; i < hexes.length; i++) {
+      if (selected[i] !== 1) continue;
+      const h = hexes[i];
+      const q0 = h.q;
+      const r0 = h.r;
+      let touchesNonPrimary = false;
+      let touchesSea = false;
+      let inland = true;
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        const nh = hexes[ni];
+        if (!nh) continue;
+        if (nh.tile_kind === "sea") {
+          touchesSea = true;
+          inland = false;
+        }
+        if (selected[ni] === 0 && nh.tile_kind !== "void") touchesNonPrimary = true;
+      }
+      if (!touchesNonPrimary) continue;
+      borderTiles++;
+      if (inland) inlandBorderTiles++;
+      if (straightPairs(i) >= 2) highStraightTiles++;
+
+      if (frontierRiverMask?.[i] === 1) {
+        riverAdj++;
+        if (frontierRiverFordMask?.[i] === 1) fordAdj++;
+      }
+      if (frontierRidgeMask?.[i] === 1) ridgeAdj++;
+    }
+
+    const cfg = config?.mapgen?.remask?.acceptance ?? {};
+    const maxHighStraightShare = Number.isFinite(Number(cfg?.max_high_straight_share)) ? Number(cfg.max_high_straight_share) : 0.28;
+    const minRiverAdjShare = Number.isFinite(Number(cfg?.min_river_adj_share)) ? Number(cfg.min_river_adj_share) : 0.06;
+    const maxRidgeAdjShare = Number.isFinite(Number(cfg?.max_ridge_adj_share)) ? Number(cfg.max_ridge_adj_share) : 0.42;
+
+    const highStraightShare = borderTiles > 0 ? (highStraightTiles / borderTiles) : 0;
+    const riverAdjShare = inlandBorderTiles > 0 ? (riverAdj / inlandBorderTiles) : 0;
+    const ridgeAdjShare = inlandBorderTiles > 0 ? (ridgeAdj / inlandBorderTiles) : 0;
+
+    return {
+      border_tiles: borderTiles,
+      inland_border_tiles: inlandBorderTiles,
+      high_straight_tiles: highStraightTiles,
+      high_straight_share: Number(highStraightShare.toFixed(4)),
+      river_adj_tiles: riverAdj,
+      river_adj_share: Number(riverAdjShare.toFixed(4)),
+      ford_adj_tiles: fordAdj,
+      ridge_adj_tiles: ridgeAdj,
+      ridge_adj_share: Number(ridgeAdjShare.toFixed(4)),
+      acceptance: {
+        max_high_straight_share: maxHighStraightShare,
+        min_river_adj_share: minRiverAdjShare,
+        max_ridge_adj_share: maxRidgeAdjShare,
+      },
+      pass: (
+        highStraightShare <= maxHighStraightShare &&
+        riverAdjShare >= minRiverAdjShare &&
+        ridgeAdjShare <= maxRidgeAdjShare
+      ),
+    };
+  };
+
+  const borderQuality = computeRemaskBorderQuality();
+
   // Coast metrics (from breaker if present; otherwise compute)
   const coastMetrics = (typeof coastBreakReport !== "undefined" && coastBreakReport)
     ? coastBreakReport
@@ -3928,6 +4494,7 @@ ensureDir(path.dirname(reportPath));
     config_path: configPath,
     config_sha256: map.config_sha256,
     metrics_path: metricsPath,
+    border_quality: borderQuality,
     coast: {
       max_straight_run_overall: coastMetrics.max_straight_run_overall ?? null,
       max_straight_run_by_dir: coastMetrics.max_straight_run_by_dir ?? null,

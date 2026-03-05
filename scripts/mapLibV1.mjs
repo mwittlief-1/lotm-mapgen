@@ -221,6 +221,37 @@ export function computeHydrologyMetrics(map) {
   const isEstuary = (h) => h?.hydrology?.water_kind === "estuary";
   const isSeaWater = (h) => h.tile_kind === "sea" && h?.hydrology?.water_kind !== "estuary";
   const isMajorRiver = (h) => h.tile_kind === "land" && h?.hydrology?.river_class === "major";
+  const isFreshLake = (h) => h?.tile_kind === "land" && h?.hydrology?.water_kind === "lake";
+
+  // Saltwater classification: sea connected to the map boundary through sea+estuary.
+  const oceanConnectedSea = new Uint8Array(hexes.length);
+  oceanConnectedSea.fill(0);
+  const oceanQ = [];
+  for (let i = 0; i < hexes.length; i++) {
+    const h = hexes[i];
+    if (!h || h.tile_kind !== "sea") continue;
+    const q = i % width;
+    const r = Math.floor(i / width);
+    if (!(q === 0 || r === 0 || q === width - 1 || r === height - 1)) continue;
+    oceanConnectedSea[i] = 1;
+    oceanQ.push(i);
+  }
+  for (let qi = 0; qi < oceanQ.length; qi++) {
+    const cur = oceanQ[qi];
+    const h = hexes[cur];
+    for (const d of dirs) {
+      const nq = h.q + d.dq;
+      const nr = h.r + d.dr;
+      if (!inBounds(nq, nr, width, height)) continue;
+      const ni = indexOf(nq, nr, width);
+      if (oceanConnectedSea[ni]) continue;
+      const nh = hexes[ni];
+      if (!nh || nh.tile_kind !== "sea") continue;
+      // Saltwater can flow through estuary and open sea.
+      oceanConnectedSea[ni] = 1;
+      oceanQ.push(ni);
+    }
+  }
 
   // Estuary component(s)
   const estuaryIdx = [];
@@ -336,6 +367,25 @@ export function computeHydrologyMetrics(map) {
 
   let major_river_component_count = riverComponents.length;
   let major_river_touches_estuary = false;
+
+  let freshwater_lake_hex_count = 0;
+  let freshwater_adjacent_to_ocean_hex_count = 0;
+  for (let i = 0; i < hexes.length; i++) {
+    if (!isFreshLake(hexes[i])) continue;
+    freshwater_lake_hex_count++;
+    const h = hexes[i];
+    let bad = false;
+    for (const d of dirs) {
+      const nq = h.q + d.dq;
+      const nr = h.r + d.dr;
+      if (!inBounds(nq, nr, width, height)) continue;
+      const ni = indexOf(nq, nr, width);
+      const nh = hexes[ni];
+      if (!nh || nh.tile_kind !== "sea") continue;
+      if (oceanConnectedSea[ni] === 1) { bad = true; break; }
+    }
+    if (bad) freshwater_adjacent_to_ocean_hex_count++;
+  }
   if (riverComponents.length === 1 && estuaryComponents.length === 1) {
     const estSet = new Set(estuaryComponents[0]);
     const comp = riverComponents[0];
@@ -359,7 +409,9 @@ export function computeHydrologyMetrics(map) {
     estuary_length,
     major_river_component_count,
     major_river_touches_estuary,
-    major_river_tile_count: majorIdx.length
+    major_river_tile_count: majorIdx.length,
+    freshwater_lake_hex_count,
+    freshwater_adjacent_to_ocean_hex_count
   };
 }
 
