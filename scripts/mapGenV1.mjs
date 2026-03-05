@@ -1236,11 +1236,6 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 	const reshavePhaseBands = phaseBandsRaw
 	  .map((v) => Math.max(1, Math.floor(Number(v))))
 	  .filter((v, i, arr) => Number.isFinite(v) && v > 0 && arr.indexOf(v) === i);
-	const realmPerturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
-	const realmPerturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
-	const realmPerturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
-	const realmPerturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
-	const realmPerturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
 
   // Distance from each inWorld tile to the inWorld boundary (tiles adjacent to not-inWorld).
   // Used as a hard eligibility constraint for kingdom selection.
@@ -1934,6 +1929,21 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 
 
 
+		const touchesOceanSea = (i) => {
+			if (oceanConnected[i] === 1) return true;
+			const iq = i % width;
+			const ir = Math.floor(i / width);
+			const dirs0 = defaultNeighborDirs();
+			for (const d of dirs0) {
+				const nq = iq + d.dq;
+				const nr = ir + d.dr;
+				if (!inBounds(nq, nr, width, height)) continue;
+				const ni = indexOf(nq, nr, width);
+				if (!inWorld[ni]) continue;
+				if (oceanConnected[ni] === 1) return true;
+			}
+			return false;
+		};
 
 		let activeBand = null;
 		const computeBandMask = (bandK) => {
