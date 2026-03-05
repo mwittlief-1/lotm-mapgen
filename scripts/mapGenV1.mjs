@@ -1751,6 +1751,154 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   };
 
 
+	const touchesOceanSea = (i) => {
+		if (oceanConnected[i] === 1) return true;
+		const iq = i % width;
+		const ir = Math.floor(i / width);
+		const dirs0 = defaultNeighborDirs();
+		for (const d of dirs0) {
+			const nq = iq + d.dq;
+			const nr = ir + d.dr;
+			if (!inBounds(nq, nr, width, height)) continue;
+			const ni = indexOf(nq, nr, width);
+			if (!inWorld[ni]) continue;
+			if (oceanConnected[ni] === 1) return true;
+		}
+		return false;
+	};
+
+  const perturbRealmBoundary = () => {
+    if (!realmPerturbEnabled || realmPerturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
+
+    const dirs0 = defaultNeighborDirs();
+    const isMovable = (i) => {
+      if (!inWorld[i]) return false;
+      if (kernelKeep[i] === 1) return false;
+      if (coastalExclusionK > 0 && touchesOceanSea(i)) return false;
+      const tk = tile_kind[i];
+      if (tk === "land") return true;
+      if (tk === "sea" && oceanConnected[i] === 0) return true;
+      return false;
+    };
+
+    const isBoundary = (i) => {
+      if (!isMovable(i)) return false;
+      const inSel = selected[i] === 1;
+      const iq = i % width;
+      const ir = Math.floor(i / width);
+      for (const d of dirs0) {
+        const nq = iq + d.dq;
+        const nr = ir + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (!isMovable(ni)) continue;
+        if ((selected[ni] === 1) !== inSel) return true;
+      }
+      return false;
+    };
+
+    const boundaryDist = () => {
+      const distB = new Int16Array(total);
+      distB.fill(-1);
+      const q = [];
+      for (let i = 0; i < total; i++) {
+        if (!isBoundary(i)) continue;
+        distB[i] = 0;
+        q.push(i);
+      }
+      for (let qi = 0; qi < q.length; qi++) {
+        const cur = q[qi];
+        const cd = distB[cur];
+        if (cd >= realmPerturbBand) continue;
+        const cq = cur % width;
+        const cr = Math.floor(cur / width);
+        for (const d of dirs0) {
+          const nq = cq + d.dq;
+          const nr = cr + d.dr;
+          if (!inBounds(nq, nr, width, height)) continue;
+          const ni = indexOf(nq, nr, width);
+          if (!isMovable(ni)) continue;
+          if (distB[ni] !== -1) continue;
+          distB[ni] = cd + 1;
+          q.push(ni);
+        }
+      }
+      return distB;
+    };
+
+    const featurePush = (i) => {
+      let f = 0;
+      if (frontierRiverMask?.[i] === 1) f += 1.0;
+      if (frontierRiverFordMask?.[i] === 1) f += 0.4;
+      if (frontierRidgeMask?.[i] === 1) f += 0.7;
+      return f;
+    };
+
+    const ensurePrimaryConnected = () => {
+      const seen = new Uint8Array(total);
+      let bestComp = [];
+      for (let i = 0; i < total; i++) {
+        if (selected[i] !== 1 || seen[i]) continue;
+        const comp = [];
+        const q = [i];
+        seen[i] = 1;
+        for (let qi = 0; qi < q.length; qi++) {
+          const cur = q[qi];
+          comp.push(cur);
+          const cq = cur % width;
+          const cr = Math.floor(cur / width);
+          for (const d of dirs0) {
+            const nq = cq + d.dq;
+            const nr = cr + d.dr;
+            if (!inBounds(nq, nr, width, height)) continue;
+            const ni = indexOf(nq, nr, width);
+            if (selected[ni] !== 1 || seen[ni]) continue;
+            seen[ni] = 1;
+            q.push(ni);
+          }
+        }
+        if (comp.length > bestComp.length) bestComp = comp;
+      }
+      if (!bestComp.length) return;
+      const keep = new Uint8Array(total);
+      for (const i of bestComp) keep[i] = 1;
+      for (let i = 0; i < total; i++) if (selected[i] === 1 && keep[i] !== 1) selected[i] = 0;
+    };
+
+    let flips = 0;
+    for (let it = 0; it < realmPerturbIterations; it++) {
+      const distB = boundaryDist();
+      const changes = [];
+      for (let i = 0; i < total; i++) {
+        if (!isMovable(i)) continue;
+        const db = distB[i];
+        if (db < 0 || db > realmPerturbBand) continue;
+        if (!isBoundary(i)) continue;
+        const n = ((hash2(seedU32 ^ 0x7f4a7c15, i ^ (it * 991), 0) / 0xffffffff) * 2) - 1;
+        const edgeW = 1 - (db / Math.max(1, realmPerturbBand));
+        const m = featurePush(i) * realmPerturbMagnet;
+        const scoreNow = n * realmPerturbNoise * edgeW + m;
+        if (selected[i] === 0 && scoreNow > 0.58) changes.push([i, 1]);
+        if (selected[i] === 1 && scoreNow < -0.62 && kernelKeep[i] !== 1) changes.push([i, 0]);
+      }
+      for (const [i, v] of changes) {
+        if (v === 1 && selected[i] === 0) {
+          if (tile_kind[i] === "sea" && oceanConnected[i] === 0) tile_kind[i] = "land";
+          selected[i] = 1;
+          flips++;
+        } else if (v === 0 && selected[i] === 1) {
+          selected[i] = 0;
+          flips++;
+        }
+      }
+      ensurePrimaryConnected();
+      trimToTarget(landTarget);
+      growToTarget(landTarget);
+    }
+
+    return { enabled: true, flips, iters: realmPerturbIterations, band: realmPerturbBand };
+  };
+
   // Border "reshave" pass: improve frontier scalloping and geographic snapping by
   // locally swapping high-cost border tiles for lower-cost neighbor tiles.
   // This is deterministic and respects: protected/kernelKeep, worldEdgeBuffer, and connectivity.
@@ -2102,6 +2250,8 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   trimToTarget(landTarget);
   growToTarget(landTarget);
 
+  // Realm-boundary perturbation first (coastline-like shape pass), then local reshave.
+  const realmPerturbSummary = perturbRealmBoundary();
   // Border reshaping (scalloping/snap): optional, deterministic.
   const reshaveSummary = borderReshave();
   // Final connectivity assertion: if somehow broken, fail fast (this is a hard invariant).
@@ -2126,6 +2276,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
       selected: finalCt,
       holesFilled: holesAdded,
       reshave: reshaveSummary,
+      realm_perturb: realmPerturbSummary,
 
       shape: {
         bins: shapeBins,
