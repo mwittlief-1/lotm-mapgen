@@ -103,7 +103,6 @@ async function main() {
 </html>`;
 
   await fs.writeFile(path.join(DIST, "map_gallery_index.html"), indexHtml, "utf8");
-  await fs.writeFile(path.join(DIST, "map_seed_batch", "seed_gallery.html"), galleryHtml, "utf8");
 
   console.log("map:publish OK — wrote dist/map_gallery_index.html and dist/map_seed_batch/seed_gallery.html");
 }
