@@ -344,6 +344,12 @@ function validateMap(map, config) {
     if (!hydro.estuary_connects_to_sea) pushErr("estuary must connect to sea", hydro);
     if (hydro.major_river_component_count !== 1) pushErr("expected exactly one major river component", { major_river_component_count: hydro.major_river_component_count });
     if (!hydro.major_river_touches_estuary) pushErr("major river must touch estuary", hydro);
+    if ((hydro.freshwater_adjacent_to_ocean_hex_count ?? 0) > 0) {
+      pushErr("freshwater lakes must not touch ocean-connected sea", {
+        freshwater_adjacent_to_ocean_hex_count: hydro.freshwater_adjacent_to_ocean_hex_count,
+        freshwater_lake_hex_count: hydro.freshwater_lake_hex_count
+      });
+    }
 
     const estLenBand = config?.coast_and_estuary?.estuary?.length_hex;
     if (Array.isArray(estLenBand) && estLenBand.length === 2) {

@@ -22,3 +22,18 @@ npm run map:review
 
 Batch map artifacts are written to `qa_runs/` (untracked), under `qa_runs/map_seed_batch/`.
 `map:review` runs the batch generator and then opens the gallery HTML when possible (otherwise it prints the absolute path).
+
+## Hosted Map Gallery (Mirror Repo / Vercel)
+
+```bash
+npm run map:publish
+```
+
+This runs the map batch and publishes a static gallery snapshot under `public/map_seed_batch/`.
+When deployed, open:
+
+- `/map_seed_batch/seed_gallery.html`
+- or `/map_gallery_index.html` (redirect helper)
+
+Use `npm run map:publish -- --no-batch` to publish the latest existing `qa_runs/map_seed_batch/` without regenerating maps.
+

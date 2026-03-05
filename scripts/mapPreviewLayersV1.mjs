@@ -188,8 +188,7 @@ export function renderLayer({ map, ctx, layer, overlay = null }) {
     for (let i = 0; i < map.hexes.length; i++) {
       const h0 = map.hexes[i];
       if (h0.tile_kind !== "land") continue;
-      // Elevation is for kingdom inspection; keep neighbor land out to reduce confusion.
-      if (!h0.county_id) continue;
+      // Elevation should cover all in-world land, including borderlands outside counties.
       const rgba = elevationGrayFromTerrain(h0.terrain);
       paintHexAtIdx({ map, ctx, idx: i, rgba, buf });
     }
