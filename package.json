@@ -20,7 +20,8 @@
     "map:gallery": "node scripts/mapBatchV1.mjs",
     "map:validate": "node scripts/mapValidateV1.mjs",
     "assets:validate": "node scripts/assetsValidateV1.mjs",
-    "boundary:check": "node scripts/boundaryCheck.mjs"
+    "boundary:check": "node scripts/boundaryCheck.mjs",
+    "map:publish": "node scripts/mapPublishV1.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
