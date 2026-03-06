@@ -76,6 +76,7 @@ for (const seed of seeds) {
   let validateOk = false;
   let warnings = [];
   let metrics = null;
+  let borderQuality = null;
 
   if (genOk) {
     validateOk = runNodeScript("mapValidateV1.mjs", [
@@ -121,12 +122,26 @@ for (const seed of seeds) {
       const genReportPath = path.join(seedDir, "mapgen_report.json");
       if (fs.existsSync(genReportPath)) {
         const genRep = JSON.parse(fs.readFileSync(genReportPath, "utf8"));
+        borderQuality = genRep?.border_quality ?? null;
         const f = genRep?.remask?.frontier;
         if (f && (Array.isArray(f.ridge_idx) || Array.isArray(f.river_idx) || Array.isArray(f.ford_idx))) {
+          const ridge = Array.isArray(f.ridge_idx) ? f.ridge_idx : [];
+          const river = Array.isArray(f.river_idx) ? f.river_idx : [];
+          const ford = Array.isArray(f.ford_idx) ? f.ford_idx : [];
+          let tripoint_idx = null;
+          if (ford.length > 0) tripoint_idx = ford[0];
+          else if (ridge.length > 0 && river.length > 0) {
+            const riverSet = new Set(river);
+            const overlap = ridge.find((x) => riverSet.has(x));
+            if (Number.isInteger(overlap)) tripoint_idx = overlap;
+            else tripoint_idx = river[0];
+          } else if (river.length > 0) tripoint_idx = river[0];
+          else if (ridge.length > 0) tripoint_idx = ridge[0];
           overlay = {
-            ridge_idx: Array.isArray(f.ridge_idx) ? f.ridge_idx : [],
-            river_idx: Array.isArray(f.river_idx) ? f.river_idx : [],
-            ford_idx: Array.isArray(f.ford_idx) ? f.ford_idx : []
+            ridge_idx: ridge,
+            river_idx: river,
+            ford_idx: ford,
+            tripoint_idx
           };
         }
       }
@@ -184,7 +199,11 @@ for (const seed of seeds) {
       market_count: settlements.market_total,
       compactness_avg: metrics?.derived?.county_compactness_avg,
       seat_spacing_min: metrics?.derived?.seat_spacing_min,
-      seat_spacing_avg: metrics?.derived?.seat_spacing_avg
+      seat_spacing_avg: metrics?.derived?.seat_spacing_avg,
+      border_high_straight_share: borderQuality?.high_straight_share,
+      border_river_adj_share: borderQuality?.river_adj_share,
+      border_ridge_adj_share: borderQuality?.ridge_adj_share,
+      border_quality_pass: borderQuality?.pass
     },
     validate_pass: validateOk,
     warnings
@@ -230,7 +249,7 @@ for (const s of summary.seeds) {
   html.push(`<img data-layer='seats' src='${rel(s.paths.layer_seats_png)}' alt='seats'>`);
   html.push(`<img data-layer='macro' style='display:none' src='${rel(s.paths.layer_macro_png)}' alt='macro'>`);
   html.push("</div>");
-  html.push(`<div class='meta'>validate_pass: ${s.validate_pass}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}</div>`);
+  html.push(`<div class='meta'>validate_pass: ${s.validate_pass}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}\nborder_quality_pass: ${s.metrics.border_quality_pass}\nborder_high_straight_share: ${s.metrics.border_high_straight_share}\nborder_river_adj_share: ${s.metrics.border_river_adj_share}\nborder_ridge_adj_share: ${s.metrics.border_ridge_adj_share}</div>`);
   if (Array.isArray(s.warnings) && s.warnings.length) {
     html.push(`<div class='meta'>warnings:\n${s.warnings.map(w=>w.message ?? JSON.stringify(w)).join("\n")}</div>`);
   }
