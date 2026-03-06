@@ -2250,7 +2250,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   trimToTarget(landTarget);
   growToTarget(landTarget);
 
-  // Realm-boundary perturbation first (coastline-like shape pass), then local reshave.
+  // -boundary perturbation first (coastline-like shape pass), then local reshave.
   const realmPerturbSummary = perturbRealmBoundary();
   // Border reshaping (scalloping/snap): optional, deterministic.
   const reshaveSummary = borderReshave();
