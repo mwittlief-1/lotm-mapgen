@@ -1768,8 +1768,13 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 	};
 
   const perturbRealmBoundary = () => {
-    if (!realmPerturbEnabled || realmPerturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
+	const perturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
+	const perturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
+	const perturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
+	const perturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
+	const perturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
 
+	if (!perturbEnabled || perturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
     const dirs0 = defaultNeighborDirs();
     const isMovable = (i) => {
       if (!inWorld[i]) return false;
