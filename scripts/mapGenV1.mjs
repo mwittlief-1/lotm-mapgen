@@ -1236,11 +1236,6 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 	const reshavePhaseBands = phaseBandsRaw
 	  .map((v) => Math.max(1, Math.floor(Number(v))))
 	  .filter((v, i, arr) => Number.isFinite(v) && v > 0 && arr.indexOf(v) === i);
-	const realmPerturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
-	const realmPerturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
-	const realmPerturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
-	const realmPerturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
-	const realmPerturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
 
   // Distance from each inWorld tile to the inWorld boundary (tiles adjacent to not-inWorld).
   // Used as a hard eligibility constraint for kingdom selection.
@@ -1773,15 +1768,13 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 	};
 
   const perturbRealmBoundary = () => {
-    // Resolve knobs locally so this pass is resilient even if outer-scope constants are altered in future merges.
-    const perturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
-    const perturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
-    const perturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
-    const perturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
-    const perturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
+	const perturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
+	const perturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
+	const perturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
+	const perturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
+	const perturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
 
-    if (!perturbEnabled || perturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
-
+	if (!perturbEnabled || perturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
     const dirs0 = defaultNeighborDirs();
     const isMovable = (i) => {
       if (!inWorld[i]) return false;
@@ -1821,7 +1814,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
       for (let qi = 0; qi < q.length; qi++) {
         const cur = q[qi];
         const cd = distB[cur];
-        if (cd >= perturbBand) continue;
+        if (cd >= realmPerturbBand) continue;
         const cq = cur % width;
         const cr = Math.floor(cur / width);
         for (const d of dirs0) {
@@ -1878,18 +1871,18 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
     };
 
     let flips = 0;
-    for (let it = 0; it < perturbIterations; it++) {
+    for (let it = 0; it < realmPerturbIterations; it++) {
       const distB = boundaryDist();
       const changes = [];
       for (let i = 0; i < total; i++) {
         if (!isMovable(i)) continue;
         const db = distB[i];
-        if (db < 0 || db > perturbBand) continue;
+        if (db < 0 || db > realmPerturbBand) continue;
         if (!isBoundary(i)) continue;
         const n = ((hash2(seedU32 ^ 0x7f4a7c15, i ^ (it * 991), 0) / 0xffffffff) * 2) - 1;
-        const edgeW = 1 - (db / Math.max(1, perturbBand));
-        const m = featurePush(i) * perturbMagnet;
-        const scoreNow = n * perturbNoise * edgeW + m;
+        const edgeW = 1 - (db / Math.max(1, realmPerturbBand));
+        const m = featurePush(i) * realmPerturbMagnet;
+        const scoreNow = n * realmPerturbNoise * edgeW + m;
         if (selected[i] === 0 && scoreNow > 0.58) changes.push([i, 1]);
         if (selected[i] === 1 && scoreNow < -0.62 && kernelKeep[i] !== 1) changes.push([i, 0]);
       }
@@ -1908,7 +1901,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
       growToTarget(landTarget);
     }
 
-    return { enabled: true, flips, iters: perturbIterations, band: perturbBand };
+    return { enabled: true, flips, iters: realmPerturbIterations, band: realmPerturbBand };
   };
 
   // Border "reshave" pass: improve frontier scalloping and geographic snapping by
@@ -1941,6 +1934,21 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 
 
 
+		const touchesOceanSea = (i) => {
+			if (oceanConnected[i] === 1) return true;
+			const iq = i % width;
+			const ir = Math.floor(i / width);
+			const dirs0 = defaultNeighborDirs();
+			for (const d of dirs0) {
+				const nq = iq + d.dq;
+				const nr = ir + d.dr;
+				if (!inBounds(nq, nr, width, height)) continue;
+				const ni = indexOf(nq, nr, width);
+				if (!inWorld[ni]) continue;
+				if (oceanConnected[ni] === 1) return true;
+			}
+			return false;
+		};
 
 		let activeBand = null;
 		const computeBandMask = (bandK) => {
@@ -2247,7 +2255,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   trimToTarget(landTarget);
   growToTarget(landTarget);
 
-  // Realm-boundary perturbation first (coastline-like shape pass), then local reshave.
+  // -boundary perturbation first (coastline-like shape pass), then local reshave.
   const realmPerturbSummary = perturbRealmBoundary();
   // Border reshaping (scalloping/snap): optional, deterministic.
   const reshaveSummary = borderReshave();
