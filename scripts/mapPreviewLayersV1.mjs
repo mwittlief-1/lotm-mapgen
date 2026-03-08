@@ -188,8 +188,7 @@ export function renderLayer({ map, ctx, layer, overlay = null }) {
     for (let i = 0; i < map.hexes.length; i++) {
       const h0 = map.hexes[i];
       if (h0.tile_kind !== "land") continue;
-      // Elevation is for kingdom inspection; keep neighbor land out to reduce confusion.
-      if (!h0.county_id) continue;
+      // Elevation should cover all in-world land, including borderlands outside counties.
       const rgba = elevationGrayFromTerrain(h0.terrain);
       paintHexAtIdx({ map, ctx, idx: i, rgba, buf });
     }
@@ -313,6 +312,14 @@ export function renderLayer({ map, ctx, layer, overlay = null }) {
         const r1 = r0 + dr;
         if (!inBounds(q1, r1, map.width, map.height)) continue;
         paintIdx(idxOf(q1, r1, map.width));
+      }
+    }
+
+    // Temporary visual marker for external-kingdom tripoint placeholder.
+    if (Number.isInteger(overlay?.tripoint_idx)) {
+      const tIdx = overlay.tripoint_idx;
+      if (tIdx >= 0 && tIdx < map.hexes.length && map.hexes[tIdx].tile_kind !== "void") {
+        paintHexAtIdx({ map, ctx, idx: tIdx, rgba: [255, 0, 180, 255], buf });
       }
     }
     return buf;
