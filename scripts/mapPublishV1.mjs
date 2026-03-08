@@ -6,7 +6,8 @@ import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
 const srcRoot = path.resolve(ROOT, "qa_runs", "map_seed_batch");
-const dstRoot = path.resolve(ROOT, "public", "map_seed_batch");
+const publicDstRoot = path.resolve(ROOT, "public", "map_seed_batch");
+const distDstRoot = path.resolve(ROOT, "dist", "map_seed_batch");
 
 const runBatch = !process.argv.includes("--no-batch");
 
@@ -39,18 +40,23 @@ if (!fs.existsSync(srcRoot)) {
   process.exit(1);
 }
 
-if (fs.existsSync(dstRoot)) fs.rmSync(dstRoot, { recursive: true, force: true });
-copyRecursive(srcRoot, dstRoot);
+for (const dstRoot of [publicDstRoot, distDstRoot]) {
+  if (fs.existsSync(dstRoot)) fs.rmSync(dstRoot, { recursive: true, force: true });
+  copyRecursive(srcRoot, dstRoot);
 
-const gallery = path.join(dstRoot, "seed_gallery.html");
-if (!fs.existsSync(gallery)) {
-  console.error(`[map:publish] gallery missing after publish: ${gallery}`);
-  process.exit(1);
+  const gallery = path.join(dstRoot, "seed_gallery.html");
+  if (!fs.existsSync(gallery)) {
+    console.error(`[map:publish] gallery missing after publish: ${gallery}`);
+    process.exit(1);
+  }
 }
 
 const indexHtml = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=/map_seed_batch/seed_gallery.html"><title>Map Gallery</title><p>Redirecting to <a href="/map_seed_batch/seed_gallery.html">map gallery</a>…</p>`;
 fs.writeFileSync(path.resolve(ROOT, "public", "map_gallery_index.html"), indexHtml);
+fs.mkdirSync(path.resolve(ROOT, "dist"), { recursive: true });
+fs.writeFileSync(path.resolve(ROOT, "dist", "map_gallery_index.html"), indexHtml);
 
-console.log(`[map:publish] published gallery to ${dstRoot}`);
+console.log(`[map:publish] published gallery to ${publicDstRoot}`);
+console.log(`[map:publish] mirrored gallery to ${distDstRoot}`);
 console.log(`[map:publish] hosted path: /map_seed_batch/seed_gallery.html`);
 console.log(`[map:publish] convenience index: /map_gallery_index.html`);
