@@ -1237,10 +1237,10 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
 	  .map((v) => Math.max(1, Math.floor(Number(v))))
 	  .filter((v, i, arr) => Number.isFinite(v) && v > 0 && arr.indexOf(v) === i);
 	const realmPerturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
-	const realmPerturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
-	const realmPerturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
-	const realmPerturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
-	const realmPerturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
+	const realmPerturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 8)));
+	const realmPerturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 14)));
+	const realmPerturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.72);
+	const realmPerturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 1.15);
 
   // Distance from each inWorld tile to the inWorld boundary (tiles adjacent to not-inWorld).
   // Used as a hard eligibility constraint for kingdom selection.
@@ -1775,10 +1775,10 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
   const perturbRealmBoundary = () => {
     // Resolve knobs locally so this pass is resilient even if outer-scope constants are altered in future merges.
     const perturbEnabled = remaskCfg?.realm_perturb_enabled !== false;
-    const perturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 4)));
-    const perturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 10)));
-    const perturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.42);
-    const perturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 0.80);
+    const perturbIterations = Math.max(0, Math.floor(Number(remaskCfg?.realm_perturb_iterations ?? 8)));
+    const perturbBand = Math.max(1, Math.floor(Number(remaskCfg?.realm_perturb_band ?? 14)));
+    const perturbNoise = Number(remaskCfg?.realm_perturb_noise_strength ?? 0.72);
+    const perturbMagnet = Number(remaskCfg?.realm_perturb_magnet_strength ?? 1.15);
 
     if (!perturbEnabled || perturbIterations <= 0) return { enabled: false, flips: 0, iters: 0 };
 
