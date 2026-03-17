@@ -1197,7 +1197,7 @@ function buildFrontierRails({ width, height, inWorld, tile_kind, world, ocean, w
   return { ridgeMask, riverMask, riverFordMask };
 }
 
-function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, coreRadius, buffer, landTarget, seed, config, protectedIdxSet }) {
+function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, coreRadius, buffer, landTarget, seed, config, protectedIdxSet, frontierGeometryOverride = null }) {
   const total = width * height;
   const remaskCfg = config?.mapgen?.remask ?? {};
   const enabled = remaskCfg?.enabled !== false;
@@ -1362,7 +1362,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
     desiredRByBin[b] = clampInt(shapeBase + o1 + o2, shapeMinR, shapeMaxR);
   }
 
-  const { ridgeMask: frontierRidgeMask, riverMask: frontierRiverMask, riverFordMask: frontierRiverFordMask } = buildFrontierRails({
+  const railSource = frontierGeometryOverride ?? buildFrontierRails({
     width,
     height,
     inWorld,
@@ -1376,6 +1376,7 @@ function remaskKingdomLand({ width, height, inWorld, tile_kind, world, ocean, co
     seed,
     config
   });
+  const { ridgeMask: frontierRidgeMask, riverMask: frontierRiverMask, riverFordMask: frontierRiverFordMask } = railSource;
 
   // Precompute per-tile penalties used by Dijkstra.
   const stepBase = 10;
@@ -2960,6 +2961,941 @@ function validateSeaAdjacency({ width, height, hexes, landHexId }) {
   return false;
 }
 
+
+
+function collectMaskIdx(arr) {
+  if (!arr) return [];
+  const out = [];
+  for (let i = 0; i < arr.length; i++) if (arr[i] === 1) out.push(i);
+  return out;
+}
+
+function countMaskOnes(arr) {
+  if (!arr) return 0;
+  let c = 0;
+  for (let i = 0; i < arr.length; i++) if (arr[i] === 1) c++;
+  return c;
+}
+
+// Frontier pipeline seam-carve:
+// - planFrontierV2 is now a semantic frontier planner (Phase 2).
+// - buildFrontierGeometryV2 still delegates geometry realization to legacy buildFrontierRails.
+// - solveKingdomBorderV2 currently delegates to legacy remaskKingdomLand.
+// - projectHydrologyFromFrontierV2 is semantic frontier hydrology author (Phase 5).
+// - projectTerrainFromFrontierV2 currently delegates to legacy paintTerrainHydrologyV1.
+function edgePlaneForRel(rel) {
+  const ax = Math.abs(rel.x);
+  const ay = Math.abs(rel.y);
+  const az = Math.abs(rel.z);
+  if (ax >= ay && ax >= az) return rel.x >= 0 ? 'x_pos' : 'x_neg';
+  if (ay >= ax && ay >= az) return rel.y >= 0 ? 'y_pos' : 'y_neg';
+  return rel.z >= 0 ? 'z_pos' : 'z_neg';
+}
+
+function rotateCW(arr, shift) {
+  const n = arr.length;
+  const out = new Array(n);
+  const s = ((shift % n) + n) % n;
+  for (let i = 0; i < n; i++) out[i] = arr[(i + s) % n];
+  return out;
+}
+
+function clampBand(min, max, lo, hi) {
+  const a = Math.max(lo, Math.min(hi, Math.floor(min)));
+  const b = Math.max(a, Math.min(hi, Math.floor(max)));
+  return { min: a, max: b };
+}
+
+function planFrontierV2({ width, height, worldRadius, coreRadius, contextBuffer, landTarget, seed, config, world, estuary_head }) {
+  const remaskCfg = config?.mapgen?.remask ?? {};
+  const seedU32 = hashStringToU32(`${seed}|frontier_plan_v2`);
+  const nominalR = approxRadiusForLandCount(landTarget);
+
+  const estRel = (estuary_head && Number.isInteger(estuary_head.q) && Number.isInteger(estuary_head.r))
+    ? cubeRel(estuary_head.q, estuary_head.r, world.cq, world.cr)
+    : { x: 0, y: -1, z: 1 };
+  const estuaryPlane = edgePlaneForRel(estRel);
+
+  const estuaryPlaneIdx = SIDE_PLANES_CW.indexOf(estuaryPlane);
+  const edgePlanesCW = rotateCW(SIDE_PLANES_CW, estuaryPlaneIdx >= 0 ? estuaryPlaneIdx : 0);
+
+  const edgeAssignments = {
+    E1: edgePlanesCW[0],
+    E2: edgePlanesCW[1],
+    E3: edgePlanesCW[2],
+    E4: edgePlanesCW[3],
+    E5: edgePlanesCW[4],
+    E6: edgePlanesCW[5],
+  };
+
+  const workspaceEdges = ['E4', 'E5'];
+  const workspaceBit = (seedU32 >>> 0) & 1;
+  const trunkEdge = workspaceBit === 0 ? 'E4' : 'E5';
+  const mountainEdge = trunkEdge === 'E4' ? 'E5' : 'E4';
+  const freshwaterEdge = ((seedU32 >>> 1) & 1) === 0 ? 'E3' : 'E6';
+  const softEdge = freshwaterEdge === 'E3' ? 'E2' : 'E6';
+
+  const shapeBase = Math.floor(Number(remaskCfg?.shape_base_radius ?? nominalR));
+  const trunkBase = Math.max(3, shapeBase + Math.floor(worldRadius * 0.02));
+  const mountainBase = Math.max(4, shapeBase + Math.floor(worldRadius * 0.08));
+  const freshwaterBase = Math.max(3, shapeBase - Math.floor(worldRadius * 0.04));
+
+  const trunkRadiusBand = clampBand(trunkBase - 3, trunkBase + 4, 2, worldRadius - 2);
+  const mountainRadiusBand = clampBand(mountainBase - 2, mountainBase + 5, 2, worldRadius - 2);
+  const freshwaterRadiusBand = clampBand(freshwaterBase - 4, freshwaterBase + 2, 2, worldRadius - 2);
+
+  const trunkRunLengthProjected = Math.max(8, Math.floor(worldRadius * 1.15) + (((seedU32 >>> 5) % 5) - 2));
+  const mountainRunLengthProjected = Math.max(8, Math.floor(worldRadius * 1.05) + (((seedU32 >>> 8) % 5) - 2));
+  const freshwaterRunLengthProjected = Math.max(6, Math.floor(worldRadius * 0.92) + (((seedU32 >>> 11) % 5) - 2));
+
+  const connFracA = 0.72;
+  const connFracB = 0.24;
+  const c34 = cubePointOnPlane(edgeAssignments.E4, worldRadius, connFracA);
+  const c56 = cubePointOnPlane(edgeAssignments.E6, worldRadius, connFracB);
+  const a34 = cubeToAxial(world.cq, world.cr, c34.x, c34.y, c34.z);
+  const a56 = cubeToAxial(world.cq, world.cr, c56.x, c56.y, c56.z);
+
+  return {
+    stage: 'planFrontierV2',
+    planner: 'semantic_frontier_planner_v2_phase2',
+    deterministic_key: `${seed}|frontier_plan_v2`,
+    worldRadius,
+    coreRadius,
+    contextBuffer,
+    landTarget,
+    coastline_edges: ['E1', 'E2', 'E6'],
+    macro_frontier_workspace: {
+      id: 'E4_E5',
+      edges: workspaceEdges,
+      resolved_first: true,
+      trunk_edge: trunkEdge,
+      mountain_edge: mountainEdge,
+    },
+    chosen_roles: {
+      trunk_edge: trunkEdge,
+      mountain_edge: mountainEdge,
+      freshwater_edge: freshwaterEdge,
+      soft_edge: softEdge,
+    },
+    radius_bands: {
+      trunk: trunkRadiusBand,
+      mountain: mountainRadiusBand,
+      freshwater: freshwaterRadiusBand,
+    },
+    projected_runs: {
+      trunk: trunkRunLengthProjected,
+      mountain: mountainRunLengthProjected,
+      freshwater: freshwaterRunLengthProjected,
+    },
+    effective_connection_vertices: {
+      E3_E4: {
+        edge_labels: ['E3', 'E4'],
+        q: a34.q,
+        r: a34.r,
+        idx: inBounds(a34.q, a34.r, width, height) ? indexOf(a34.q, a34.r, width) : null,
+      },
+      E5_E6: {
+        edge_labels: ['E5', 'E6'],
+        q: a56.q,
+        r: a56.r,
+        idx: inBounds(a56.q, a56.r, width, height) ? indexOf(a56.q, a56.r, width) : null,
+      }
+    },
+    estuary_reference: {
+      has_estuary_head: Boolean(estuary_head && Number.isInteger(estuary_head.idx)),
+      estuary_head_idx: estuary_head?.idx ?? null,
+      estuary_head_qr: (estuary_head && Number.isInteger(estuary_head.q) && Number.isInteger(estuary_head.r))
+        ? { q: estuary_head.q, r: estuary_head.r }
+        : null,
+      estuary_side_plane: estuaryPlane,
+      estuary_edge_label: 'E1',
+      edge_assignments: edgeAssignments
+    },
+    legacy_bridge: {
+      kingdomRadiusHint: Math.floor((trunkRadiusBand.min + mountainRadiusBand.max) / 2),
+      remaskEnabled: remaskCfg?.enabled !== false,
+      remaskFrontierRailsEnabled: remaskCfg?.enabled_frontier_rails !== false,
+    }
+  };
+}
+
+function featurePathFromPlan({ width, height, inWorld, world, seedU32, edgeAssignments, edgeLabel, radiusBand, runLength, fracCenter = 0.5, fracSpan = 0.72, jitterAmp = 0.09, radialNoiseScale = 13, meanderScale = 11, inwardBias = 0 }) {
+  const plane = edgeAssignments?.[edgeLabel];
+  if (!plane) return [];
+  const cq = world.cq;
+  const cr = world.cr;
+  const steps = Math.max(6, Math.floor(runLength));
+  const dirBit = ((seedU32 >>> 3) & 1) === 0 ? -1 : 1;
+  const out = [];
+  for (let s = 0; s < steps; s++) {
+    const t = steps > 1 ? (s / (steps - 1)) : 0;
+    const baseFrac = fracCenter + (t - 0.5) * fracSpan * dirBit;
+    const meander = meander1D(seedU32 ^ 0x55aa55aa, s + 17, meanderScale, Math.max(1, Math.floor(jitterAmp * 100))) / 100;
+    const n = (valueNoise2D(seedU32 ^ 0xa55aa55a, s, 0, Math.max(1, meanderScale * 0.75)) * 2) - 1;
+    const frac = Math.max(0.03, Math.min(0.97, baseFrac + (meander * 0.45) + (n * jitterAmp)));
+
+    const rn = valueNoise2D(seedU32 ^ 0x1f1f1f1f, s, 0, radialNoiseScale);
+    const r0 = radiusBand.min + (radiusBand.max - radiusBand.min) * rn;
+    const r = clampInt(Math.round(r0 - inwardBias * t), Math.max(2, radiusBand.min), Math.max(radiusBand.min, radiusBand.max));
+
+    const c = cubePointOnPlane(plane, r, frac);
+    const a = cubeToAxial(cq, cr, c.x, c.y, c.z);
+    if (!inBounds(a.q, a.r, width, height)) continue;
+    const idx = indexOf(a.q, a.r, width);
+    if (!inWorld[idx]) continue;
+    if (out.length === 0 || out[out.length - 1] !== idx) out.push(idx);
+  }
+  return out;
+}
+
+function markMaskFromIdx(mask, idxs) {
+  for (const idx of idxs) {
+    if (idx == null) continue;
+    if (idx < 0 || idx >= mask.length) continue;
+    mask[idx] = 1;
+  }
+}
+
+function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, ocean, seed, config, frontierPlan }) {
+  const total = width * height;
+  const remaskCfg = config?.mapgen?.remask ?? {};
+  const ridgeBeltRadius = Math.max(0, Math.floor(Number(remaskCfg?.frontier_ridge_belt_radius ?? 2)));
+  const riverBeltRadius = Math.max(0, Math.floor(Number(remaskCfg?.frontier_river_belt_radius ?? 1)));
+  const fordCount = Math.max(0, Math.floor(Number(remaskCfg?.frontier_river_ford_count ?? 2)));
+
+  const outsideCoreLand = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    if (!inWorld[i]) continue;
+    if (tile_kind[i] !== 'land') continue;
+    const q = i % width;
+    const r = Math.floor(i / width);
+    const rel = cubeRel(q, r, world.cq, world.cr);
+    const dd = cubeDist(rel.x, rel.y, rel.z);
+    if (dd <= (frontierPlan.coreRadius ?? 0)) continue;
+    if (dd > ((frontierPlan.worldRadius ?? world.radius) - 1)) continue;
+    outsideCoreLand[i] = 1;
+  }
+
+  const seedU32 = hashStringToU32(`${seed}|frontier_geometry_v2`);
+  const edgeAssignments = frontierPlan?.estuary_reference?.edge_assignments ?? {};
+  const chosen = frontierPlan?.chosen_roles ?? {};
+  const bands = frontierPlan?.radius_bands ?? {};
+  const runs = frontierPlan?.projected_runs ?? {};
+
+  const trunkApproach = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x1001,
+    edgeAssignments,
+    edgeLabel: chosen.trunk_edge,
+    radiusBand: { min: Math.max(2, (bands?.trunk?.min ?? 8) - 2), max: Math.max(3, (bands?.trunk?.max ?? 10) - 1) },
+    runLength: Math.max(8, Math.floor((runs?.trunk ?? 16) * 0.55)),
+    fracCenter: 0.62,
+    fracSpan: 0.58,
+    jitterAmp: 0.08,
+    inwardBias: 2
+  });
+
+  const trunkBorderFlow = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x1002,
+    edgeAssignments,
+    edgeLabel: chosen.trunk_edge,
+    radiusBand: bands?.trunk ?? { min: 8, max: 12 },
+    runLength: runs?.trunk ?? 18,
+    fracCenter: 0.5,
+    fracSpan: 0.82,
+    jitterAmp: 0.11,
+    inwardBias: 0
+  });
+
+  const trunkInteriorTurnCorridor = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x1003,
+    edgeAssignments,
+    edgeLabel: chosen.trunk_edge,
+    radiusBand: { min: Math.max(2, (bands?.trunk?.min ?? 8) - 5), max: Math.max(3, (bands?.trunk?.min ?? 8) - 2) },
+    runLength: Math.max(6, Math.floor((runs?.trunk ?? 16) * 0.36)),
+    fracCenter: 0.36,
+    fracSpan: 0.44,
+    jitterAmp: 0.07,
+    inwardBias: 3
+  });
+
+  const mountainRidgeSpine = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x2001,
+    edgeAssignments,
+    edgeLabel: chosen.mountain_edge,
+    radiusBand: bands?.mountain ?? { min: 10, max: 14 },
+    runLength: runs?.mountain ?? 16,
+    fracCenter: 0.52,
+    fracSpan: 0.80,
+    jitterAmp: 0.10,
+    inwardBias: 1
+  });
+
+  const freshwaterChain = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x3001,
+    edgeAssignments,
+    edgeLabel: chosen.freshwater_edge,
+    radiusBand: bands?.freshwater ?? { min: 7, max: 11 },
+    runLength: runs?.freshwater ?? 14,
+    fracCenter: 0.54,
+    fracSpan: 0.66,
+    jitterAmp: 0.12,
+    inwardBias: 1
+  });
+
+  const softClosure = featurePathFromPlan({
+    width, height, inWorld, world,
+    seedU32: seedU32 ^ 0x4001,
+    edgeAssignments,
+    edgeLabel: chosen.soft_edge,
+    radiusBand: { min: Math.max(2, (bands?.freshwater?.min ?? 7) - 1), max: Math.max(3, (bands?.freshwater?.max ?? 11) + 1) },
+    runLength: Math.max(6, Math.floor((runs?.freshwater ?? 14) * 0.62)),
+    fracCenter: 0.48,
+    fracSpan: 0.46,
+    jitterAmp: 0.08,
+    inwardBias: 0
+  });
+
+  const connE34 = [];
+  const connV34 = frontierPlan?.effective_connection_vertices?.E3_E4?.idx;
+  if (Number.isInteger(connV34) && connV34 >= 0 && connV34 < total && inWorld[connV34]) connE34.push(connV34);
+  const connE56 = [];
+  const connV56 = frontierPlan?.effective_connection_vertices?.E5_E6?.idx;
+  if (Number.isInteger(connV56) && connV56 >= 0 && connV56 < total && inWorld[connV56]) connE56.push(connV56);
+
+  const mountainPasses = [];
+  if (mountainRidgeSpine.length > 4) {
+    const passN = Math.max(1, Math.min(3, Math.floor(mountainRidgeSpine.length / 10)));
+    for (let k = 1; k <= passN; k++) {
+      const idx = mountainRidgeSpine[Math.floor((k * mountainRidgeSpine.length) / (passN + 1))];
+      if (Number.isInteger(idx)) mountainPasses.push(idx);
+    }
+  }
+
+  const trunkFords = [];
+  if (trunkBorderFlow.length > 2 && fordCount > 0) {
+    for (let k = 1; k <= fordCount; k++) {
+      const idx = trunkBorderFlow[Math.min(trunkBorderFlow.length - 1, Math.floor((k * trunkBorderFlow.length) / (fordCount + 1)))];
+      if (Number.isInteger(idx)) trunkFords.push(idx);
+    }
+  }
+
+  const ridgeSeeds = [
+    ...mountainRidgeSpine,
+    ...softClosure,
+    ...connE56,
+  ];
+  const riverSeeds = [
+    ...trunkApproach,
+    ...trunkBorderFlow,
+    ...trunkInteriorTurnCorridor,
+    ...freshwaterChain,
+    ...connE34,
+  ];
+
+  const ridgeMask = dilateIdxSetToMask({
+    width,
+    height,
+    inWorld,
+    seeds: ridgeSeeds,
+    radius: ridgeBeltRadius,
+    passableMask: outsideCoreLand
+  });
+  const riverMask = dilateIdxSetToMask({
+    width,
+    height,
+    inWorld,
+    seeds: riverSeeds,
+    radius: riverBeltRadius,
+    passableMask: outsideCoreLand
+  });
+  const riverFordMask = new Uint8Array(total);
+  markMaskFromIdx(riverFordMask, trunkFords);
+
+  const semanticGeometry = {
+    trunk_frontier_geometry: {
+      approach_phase_idx: trunkApproach,
+      border_flow_phase_idx: trunkBorderFlow,
+      interior_turn_corridor_placeholder_idx: trunkInteriorTurnCorridor,
+      ford_markers_idx: trunkFords,
+    },
+    mountain_frontier_geometry: {
+      ridge_spine_idx: mountainRidgeSpine,
+      pass_gap_markers_idx: mountainPasses,
+    },
+    freshwater_frontier_geometry: {
+      chain_idx: freshwaterChain,
+      mode: 'river_chain_placeholder',
+      placeholder: true,
+    },
+    soft_closure_geometry: {
+      closure_idx: softClosure,
+      placeholder: true,
+    },
+    connector_geometry: {
+      e3_e4_connector_idx: connE34,
+      e5_e6_connector_idx: connE56,
+      placeholder: true,
+    }
+  };
+
+  const legacyGeometry = buildFrontierRails({
+    width,
+    height,
+    inWorld,
+    tile_kind,
+    world,
+    ocean,
+    worldRadius: frontierPlan.worldRadius,
+    kingdomRadiusHint: frontierPlan?.legacy_bridge?.kingdomRadiusHint ?? frontierPlan.worldRadius,
+    seed,
+    config
+  });
+
+  const activeRidge = countMaskOnes(ridgeMask);
+  const activeRiver = countMaskOnes(riverMask);
+  const legacyRidge = countMaskOnes(legacyGeometry?.ridgeMask);
+  const legacyRiver = countMaskOnes(legacyGeometry?.riverMask);
+
+  return {
+    stage: 'buildFrontierGeometryV2',
+    delegate: 'semantic_geometry_author_v2_phase3',
+    geometry: {
+      ridgeMask,
+      riverMask,
+      riverFordMask,
+    },
+    semanticGeometry,
+    legacyComparison: {
+      enabled: true,
+      legacy_delegate: 'buildFrontierRails',
+      legacy_geometry_masks: legacyGeometry,
+      active_counts: { ridge: activeRidge, river: activeRiver },
+      legacy_counts: { ridge: legacyRidge, river: legacyRiver },
+    },
+    debug: {
+      active_geometry_author: 'buildFrontierGeometryV2.semantic',
+      ridge_belt_tiles: activeRidge,
+      river_belt_tiles: activeRiver,
+      ford_tiles: countMaskOnes(riverFordMask),
+      semantic_geometry_by_feature: {
+        trunk: {
+          approach_len: trunkApproach.length,
+          border_flow_len: trunkBorderFlow.length,
+          interior_turn_corridor_len: trunkInteriorTurnCorridor.length,
+        },
+        mountain: {
+          ridge_spine_len: mountainRidgeSpine.length,
+          pass_markers: mountainPasses.length,
+        },
+        freshwater: {
+          chain_len: freshwaterChain.length,
+          mode: 'river_chain_placeholder',
+        },
+        soft_closure: {
+          closure_len: softClosure.length,
+        },
+        connectors: {
+          e3_e4_len: connE34.length,
+          e5_e6_len: connE56.length,
+        }
+      },
+      legacy_comparison: {
+        legacy_delegate: 'buildFrontierRails',
+        legacy_ridge_belt_tiles: legacyRidge,
+        legacy_river_belt_tiles: legacyRiver,
+      },
+      mismatch_markers: {
+        legacy_geometry_not_plan_authored: true,
+        active_geometry_semantic: true,
+        placeholders_present: true,
+        geometry_diff_vs_legacy: {
+          ridge_tile_delta: activeRidge - legacyRidge,
+          river_tile_delta: activeRiver - legacyRiver,
+        }
+      }
+    }
+  };
+}
+
+function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean, coreRadius, contextBuffer, landTarget, seed, config, protectedIdxSet, frontierPlanStage, frontierGeometryStage }) {
+  const total = width * height;
+  const dirs = defaultNeighborDirs();
+
+  const landMask = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    if (!inWorld[i]) continue;
+    if (tile_kind[i] === 'land') landMask[i] = 1;
+  }
+
+  const edgeAssignments = frontierPlanStage?.estuary_reference?.edge_assignments ?? {};
+  const planeToLabel = new Map(Object.entries(edgeAssignments).map(([k, v]) => [v, k]));
+  const coastlineLabels = new Set(frontierPlanStage?.coastline_edges ?? []);
+
+  const coastlineBorderIdx = [];
+  for (let i = 0; i < total; i++) {
+    if (landMask[i] !== 1) continue;
+    const q = i % width;
+    const r = Math.floor(i / width);
+    const rel = cubeRel(q, r, world.cq, world.cr);
+    const label = planeToLabel.get(edgePlaneForRel(rel));
+    if (!label || !coastlineLabels.has(label)) continue;
+    let touchesSea = false;
+    for (const d of dirs) {
+      const nq = q + d.dq;
+      const nr = r + d.dr;
+      if (!inBounds(nq, nr, width, height)) continue;
+      const ni = indexOf(nq, nr, width);
+      if (!inWorld[ni]) continue;
+      if (tile_kind[ni] === 'sea') { touchesSea = true; break; }
+    }
+    if (touchesSea) coastlineBorderIdx.push(i);
+  }
+
+  const semantic = frontierGeometryStage?.semanticGeometry ?? {};
+  const trunkBorderIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
+  const mountainBorderIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
+  const freshwaterBorderIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
+  const softClosureIdx = semantic?.soft_closure_geometry?.closure_idx ?? [];
+  const connectorIdx = [
+    ...(semantic?.connector_geometry?.e3_e4_connector_idx ?? []),
+    ...(semantic?.connector_geometry?.e5_e6_connector_idx ?? []),
+  ];
+
+  const borderSeedSet = new Set([
+    ...coastlineBorderIdx,
+    ...trunkBorderIdx,
+    ...mountainBorderIdx,
+    ...freshwaterBorderIdx,
+    ...softClosureIdx,
+    ...connectorIdx,
+  ].filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1));
+
+  const borderSeedList = Array.from(borderSeedSet);
+  const borderDilateRadius = Math.max(1, Math.floor(Number(config?.mapgen?.frontier?.solve_border_dilate_radius ?? 1)));
+  const scaffoldBorderMask = dilateIdxSetToMask({
+    width,
+    height,
+    inWorld,
+    seeds: borderSeedList,
+    radius: borderDilateRadius,
+    passableMask: landMask
+  });
+
+  const distToScaffold = new Int16Array(total);
+  distToScaffold.fill(-1);
+  {
+    const q = [];
+    for (let i = 0; i < total; i++) {
+      if (landMask[i] !== 1) continue;
+      if (scaffoldBorderMask[i] !== 1) continue;
+      distToScaffold[i] = 0;
+      q.push(i);
+    }
+    for (let qi = 0; qi < q.length; qi++) {
+      const cur = q[qi];
+      const cd = distToScaffold[cur];
+      const cq = cur % width;
+      const cr = Math.floor(cur / width);
+      for (const d of dirs) {
+        const nq = cq + d.dq;
+        const nr = cr + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (landMask[ni] !== 1) continue;
+        if (distToScaffold[ni] !== -1) continue;
+        distToScaffold[ni] = cd + 1;
+        q.push(ni);
+      }
+    }
+  }
+
+  const centerIdx = indexOf(world.cq, world.cr, width);
+  const scoreOf = (idx) => {
+    const q = idx % width;
+    const r = Math.floor(idx / width);
+    const dCenter = axialDist(q, r, world.cq, world.cr);
+    const dBorder = distToScaffold[idx] >= 0 ? distToScaffold[idx] : 0;
+    return (dBorder * 1000) - (dCenter * 11) - ((idx & 255) * 0.001);
+  };
+
+  const seedCandidates = [];
+  for (const idx of (semantic?.trunk_frontier_geometry?.interior_turn_corridor_placeholder_idx ?? [])) {
+    if (landMask[idx] === 1 && scaffoldBorderMask[idx] !== 1) seedCandidates.push(idx);
+  }
+  for (const idx of connectorIdx) {
+    if (landMask[idx] === 1 && scaffoldBorderMask[idx] !== 1) seedCandidates.push(idx);
+  }
+  if (landMask[centerIdx] === 1 && scaffoldBorderMask[centerIdx] !== 1) seedCandidates.push(centerIdx);
+  if (!seedCandidates.length) {
+    let best = -1;
+    let bestScore = -1e18;
+    for (let i = 0; i < total; i++) {
+      if (landMask[i] !== 1 || scaffoldBorderMask[i] === 1) continue;
+      const s = scoreOf(i);
+      if (s > bestScore) { bestScore = s; best = i; }
+    }
+    if (best >= 0) seedCandidates.push(best);
+  }
+
+  const selectedMask = new Uint8Array(total);
+  const queued = new Uint8Array(total);
+  const heap = new MinHeap();
+  const seed0 = seedCandidates.length ? seedCandidates.sort((a, b) => scoreOf(b) - scoreOf(a))[0] : -1;
+  if (seed0 >= 0) {
+    heap.push([-scoreOf(seed0), seed0]);
+    queued[seed0] = 1;
+  }
+
+  let selectedCount = 0;
+  while (heap.size() > 0 && selectedCount < landTarget) {
+    const n = heap.pop();
+    const idx = Array.isArray(n) ? n[1] : null;
+    if (!Number.isInteger(idx)) continue;
+    if (selectedMask[idx] === 1) continue;
+    if (landMask[idx] !== 1) continue;
+    if (scaffoldBorderMask[idx] === 1) continue;
+
+    if (selectedCount > 0) {
+      let hasAdj = false;
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (selectedMask[ni] === 1) { hasAdj = true; break; }
+      }
+      if (!hasAdj) continue;
+    }
+
+    selectedMask[idx] = 1;
+    selectedCount++;
+
+    const q0 = idx % width;
+    const r0 = Math.floor(idx / width);
+    for (const d of dirs) {
+      const nq = q0 + d.dq;
+      const nr = r0 + d.dr;
+      if (!inBounds(nq, nr, width, height)) continue;
+      const ni = indexOf(nq, nr, width);
+      if (queued[ni] === 1) continue;
+      if (landMask[ni] !== 1) continue;
+      if (scaffoldBorderMask[ni] === 1) continue;
+      heap.push([-scoreOf(ni), ni]);
+      queued[ni] = 1;
+    }
+  }
+
+  const primaryMask = selectedMask;
+  const interiorMask = new Uint8Array(total);
+  interiorMask.set(primaryMask);
+
+  const borderMask = new Uint8Array(total);
+  const borderIdx = [];
+  for (let i = 0; i < total; i++) {
+    if (primaryMask[i] !== 1) continue;
+    const q = i % width;
+    const r = Math.floor(i / width);
+    let isBorder = false;
+    for (const d of dirs) {
+      const nq = q + d.dq;
+      const nr = r + d.dr;
+      if (!inBounds(nq, nr, width, height)) { isBorder = true; break; }
+      const ni = indexOf(nq, nr, width);
+      if (!inWorld[ni]) { isBorder = true; break; }
+      if (primaryMask[ni] !== 1) { isBorder = true; break; }
+    }
+    if (isBorder) {
+      borderMask[i] = 1;
+      borderIdx.push(i);
+    }
+  }
+
+  const activeSolve = {
+    borderMask,
+    interiorMask,
+    primaryMask,
+    border_idx: borderIdx,
+  };
+
+  // Legacy remask retained for comparison/debug only (not border authority).
+  const legacyRemask = remaskKingdomLand({
+    width,
+    height,
+    inWorld,
+    tile_kind,
+    world,
+    ocean,
+    coreRadius,
+    buffer: contextBuffer,
+    landTarget,
+    seed,
+    config,
+    protectedIdxSet,
+    frontierGeometryOverride: frontierGeometryStage?.geometry ?? null
+  });
+
+  const legacySel = legacyRemask?.selectedMask ?? null;
+  let deltaVsLegacy = 0;
+  if (legacySel) {
+    for (let i = 0; i < total; i++) if ((legacySel[i] === 1) !== (primaryMask[i] === 1)) deltaVsLegacy++;
+  }
+
+  return {
+    stage: 'solveKingdomBorderV2',
+    delegate: 'semantic_border_solver_v2_phase4',
+    solved: activeSolve,
+    legacyComparison: {
+      enabled: true,
+      delegate: 'legacy_remaskKingdomLand',
+      legacy_selected_mask: legacySel,
+      delta_tiles_vs_active: deltaVsLegacy,
+      legacy_error: legacyRemask?.debug?.error ?? null,
+    },
+    debug: {
+      active_border_author: 'solveKingdomBorderV2.semantic',
+      selected_tiles: countMaskOnes(primaryMask),
+      border_tiles: borderIdx.length,
+      scaffold_contributions: {
+        coastline_segment_tiles: coastlineBorderIdx.length,
+        trunk_border_flow_tiles: trunkBorderIdx.length,
+        mountain_segment_tiles: mountainBorderIdx.length,
+        freshwater_segment_tiles: freshwaterBorderIdx.length,
+        soft_closure_tiles: softClosureIdx.length,
+        connector_tiles: connectorIdx.length,
+        scaffold_seed_tiles: borderSeedList.length,
+      },
+      contiguous_guarantee: {
+        method: 'single_component_contiguous_growth_with_scaffold_barrier',
+        seed_used: seed0,
+      },
+      legacy_delta_tiles: deltaVsLegacy,
+    }
+  };
+}
+
+function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, river_end, seed, config, frontierPlanStage, frontierGeometryStage, kingdomBorderStage }) {
+  const isLandIdx = (idx) => Number.isInteger(idx) && idx >= 0 && idx < (width * height) && inWorld[idx] && tile_kind[idx] === 'land';
+  const uniqPath = (arr) => {
+    const out = [];
+    const seen = new Set();
+    for (const idx of (arr ?? [])) {
+      if (!isLandIdx(idx)) continue;
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      out.push(idx);
+    }
+    return out;
+  };
+
+  const shortestPathLand = ({ starts, endIdx }) => {
+    if (!isLandIdx(endIdx)) return null;
+    const parent = new Int32Array(width * height);
+    parent.fill(-1);
+    const seen = new Uint8Array(width * height);
+    const q = [];
+    for (const s of starts) {
+      if (!isLandIdx(s)) continue;
+      if (seen[s]) continue;
+      seen[s] = 1;
+      parent[s] = s;
+      q.push(s);
+    }
+    const dirs = defaultNeighborDirs();
+    for (let qi = 0; qi < q.length; qi++) {
+      const cur = q[qi];
+      if (cur === endIdx) break;
+      const cq = cur % width;
+      const cr = Math.floor(cur / width);
+      for (const d of dirs) {
+        const nq = cq + d.dq;
+        const nr = cr + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (!isLandIdx(ni)) continue;
+        if (seen[ni]) continue;
+        seen[ni] = 1;
+        parent[ni] = cur;
+        q.push(ni);
+      }
+    }
+    if (!seen[endIdx]) return null;
+    const path = [];
+    let cur = endIdx;
+    while (true) {
+      path.push(cur);
+      if (parent[cur] === cur) break;
+      cur = parent[cur];
+      if (cur < 0) break;
+    }
+    path.reverse();
+    return path;
+  };
+
+  const semantic = frontierGeometryStage?.semanticGeometry ?? {};
+  const trunkApproach = uniqPath(semantic?.trunk_frontier_geometry?.approach_phase_idx ?? []);
+  const trunkBorderFlow = uniqPath(semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? []);
+  const trunkInteriorTurn = uniqPath(semantic?.trunk_frontier_geometry?.interior_turn_corridor_placeholder_idx ?? []);
+
+  const borderFlowUsed = trunkBorderFlow.slice();
+  const approachUsed = trunkApproach.slice(0, Math.max(3, Math.floor(trunkApproach.length * 0.8)));
+  const interiorTurnUsed = trunkInteriorTurn.slice();
+
+  const routeTargets = uniqPath([
+    ...approachUsed,
+    ...borderFlowUsed,
+    ...interiorTurnUsed,
+  ]);
+
+  const trunkFinalPath = [];
+  if (routeTargets.length > 0) {
+    trunkFinalPath.push(routeTargets[0]);
+    for (let ti = 1; ti < routeTargets.length; ti++) {
+      const prev = trunkFinalPath[trunkFinalPath.length - 1];
+      const next = routeTargets[ti];
+      if (prev === next) continue;
+      const seg = shortestPathLand({ starts: [prev], endIdx: next });
+      if (!seg || seg.length === 0) continue;
+      for (let si = 1; si < seg.length; si++) {
+        const idx = seg[si];
+        if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+      }
+    }
+  }
+
+  let estuaryConnector = [];
+  if (river_end && Number.isInteger(river_end.idx) && trunkFinalPath.length > 0) {
+    const tail = trunkFinalPath[trunkFinalPath.length - 1];
+    const p0 = shortestPathLand({ starts: [tail], endIdx: river_end.idx });
+    if (p0 && p0.length > 0) {
+      estuaryConnector = uniqPath(p0);
+      for (let si = 1; si < estuaryConnector.length; si++) {
+        const idx = estuaryConnector[si];
+        if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+      }
+    }
+  }
+
+  const majorRiverIdxSet = new Set(trunkFinalPath);
+  let majorRiverPathIdx = trunkFinalPath.length ? trunkFinalPath : null;
+  let majorRiverPathsIdx = majorRiverPathIdx ? [majorRiverPathIdx] : null;
+
+  // Freshwater frontier active output (placeholder mode supported as active hydrology).
+  const freshwaterMode = semantic?.freshwater_frontier_geometry?.mode ?? 'river_chain_placeholder';
+  const freshwaterChainIdx = uniqPath(semantic?.freshwater_frontier_geometry?.chain_idx ?? []);
+  const freshwaterActiveIdx = freshwaterChainIdx.filter((idx) => !majorRiverIdxSet.has(idx));
+  const freshwaterIdxSet = new Set(freshwaterActiveIdx);
+
+  // Subordinate tributary plausibility: optional short connector from freshwater chain to trunk.
+  let tributaryPathIdx = null;
+  if (freshwaterActiveIdx.length >= 4 && majorRiverPathIdx && majorRiverPathIdx.length >= 8) {
+    const joinTarget = majorRiverPathIdx[Math.floor(majorRiverPathIdx.length * 0.66)];
+    const tributaryPath = shortestPathLand({ starts: freshwaterActiveIdx.slice(0, Math.max(1, Math.floor(freshwaterActiveIdx.length * 0.4))), endIdx: joinTarget });
+    if (tributaryPath && tributaryPath.length >= 4) {
+      tributaryPathIdx = uniqPath(tributaryPath);
+      for (const idx of tributaryPathIdx) majorRiverIdxSet.add(idx);
+      majorRiverPathsIdx = majorRiverPathsIdx ?? [];
+      majorRiverPathsIdx.push(tributaryPathIdx);
+    }
+  }
+
+  // Legacy hydrology retained for comparison/debug only.
+  let legacyMajorPath = null;
+  if (river_end && Number.isInteger(river_end.idx)) {
+    let legacyStart = null;
+    let bestD = -1;
+    for (let i = 0; i < tile_kind.length; i++) {
+      if (!inWorld[i]) continue;
+      if (tile_kind[i] !== 'land') continue;
+      const q = i % width;
+      const r = Math.floor(i / width);
+      const d = axialDist(q, r, river_end.q, river_end.r);
+      if (d > bestD) { bestD = d; legacyStart = i; }
+    }
+    if (legacyStart != null) {
+      legacyMajorPath = computeRiverPathMeandered({ width, height, inWorld, tile_kind, startIdx: legacyStart, endIdx: river_end.idx, seed, config, tag: 'major_legacy_compare' });
+    }
+  }
+  const legacySet = new Set(legacyMajorPath ?? []);
+  let legacyDelta = 0;
+  for (const idx of majorRiverIdxSet) if (!legacySet.has(idx)) legacyDelta++;
+  for (const idx of legacySet) if (!majorRiverIdxSet.has(idx)) legacyDelta++;
+
+  return {
+    stage: 'projectHydrologyFromFrontierV2',
+    delegate: 'semantic_frontier_hydrology_v2_phase5',
+    majorRiverIdxSet,
+    majorRiverPathIdx,
+    majorRiverPathsIdx,
+    freshwaterFrontierHydrology: {
+      mode: freshwaterMode,
+      active_idx: freshwaterActiveIdx,
+      active_idx_set: freshwaterIdxSet,
+      tributary_idx: tributaryPathIdx,
+    },
+    trunkSegmentsUsed: {
+      approach_idx: approachUsed,
+      border_flow_idx: borderFlowUsed,
+      interior_turn_idx: interiorTurnUsed,
+      estuary_connector_idx: estuaryConnector,
+      border_flow_used_ratio: trunkBorderFlow.length > 0 ? Number((borderFlowUsed.length / trunkBorderFlow.length).toFixed(4)) : 0,
+    },
+    legacyComparison: {
+      enabled: true,
+      legacy_delegate: 'computeRiverPathMeandered',
+      legacy_major_path_idx: legacyMajorPath,
+      delta_tiles_vs_active: legacyDelta,
+    },
+    debug: {
+      active_hydrology_author: 'projectHydrologyFromFrontierV2.semantic',
+      trunk_len: majorRiverPathIdx?.length ?? 0,
+      major_paths: majorRiverPathsIdx?.length ?? 0,
+      border_flow_used_len: borderFlowUsed.length,
+      interior_turn_used_len: interiorTurnUsed.length,
+      freshwater_active_len: freshwaterActiveIdx.length,
+      tributary_len: tributaryPathIdx?.length ?? 0,
+      border_flow_explicitly_used: borderFlowUsed.length > 0,
+    }
+  };
+}
+
+function projectTerrainFromFrontierV2({ seed, width, height, hexes, landIdxAll, distToSeaAll, distToVoidAll, distToMajorRiverAll, macroStyleId, macroRidgeMask, macroBasinId, frontierRidgeMask, frontierRiverMask, frontierRiverFordMask, estuaryTiles, majorRiverIdxSet, seatProtect, seatsIdx, config }) {
+  const debug = {};
+  paintTerrainHydrologyV1({
+    seed,
+    width,
+    height,
+    hexes,
+    landIdx: landIdxAll,
+    distToSea: distToSeaAll,
+    distToVoid: distToVoidAll,
+    distToMajorRiver: distToMajorRiverAll,
+    macroStyleId,
+    macroRidgeMask,
+    macroBasinId,
+    frontierRidgeMask,
+    frontierRiverMask,
+    frontierRiverFordMask,
+    estuaryIdxSet: new Set(estuaryTiles ?? []),
+    majorRiverIdxSet,
+    protectedIdxSet: seatProtect,
+    seatsIdx,
+    config,
+    debugOut: debug
+  });
+  return {
+    stage: 'projectTerrainFromFrontierV2',
+    delegate: 'legacy_paintTerrainHydrologyV1',
+    debug
+  };
+}
+
 // Main
 const args = parseArgs(process.argv.slice(2));
 const seed = args.seed;
@@ -3022,6 +3958,9 @@ const contextBuffer = Math.max(0, Math.floor(Number(config?.mapgen?.remask?.cont
 
 let remaskSummary = null;
 let terrainHydroSummary = null;
+let frontierPlanStage = null;
+let frontierGeometryStage = null;
+let kingdomBorderStage = null;
 
 // Primary land mask (1 = primary kingdom land, 0 = borderlands / other land).
 // Default is set after remask; if remask falls back, all land is treated as primary.
@@ -3031,6 +3970,9 @@ let primaryMask = null;
 let frontierRidgeMask = null;
 let frontierRiverMask = null;
 let frontierRiverFordMask = null;
+
+// Phase 0/1 seam debug: explicit frontier stage payloads.
+let frontierV2Debug = null;
 
 // Estuary params (pick within configured bands)
 const estLenBand = config?.coast_and_estuary?.estuary?.length_hex ?? [6, 12];
@@ -3246,7 +4188,30 @@ let protectedIdxSet = null;
   }
   for (const idx of extra) protectedIdxSet.add(idx);
 
-  const remaskRes = remaskKingdomLand({
+  frontierPlanStage = planFrontierV2({
+    width,
+    height,
+    worldRadius,
+    coreRadius,
+    contextBuffer,
+    landTarget,
+    seed,
+    config,
+    world,
+    estuary_head
+  });
+  frontierGeometryStage = buildFrontierGeometryV2({
+    width,
+    height,
+    inWorld,
+    tile_kind,
+    world,
+    ocean,
+    seed,
+    config,
+    frontierPlan: frontierPlanStage
+  });
+  kingdomBorderStage = solveKingdomBorderV2({
     width,
     height,
     inWorld,
@@ -3254,78 +4219,82 @@ let protectedIdxSet = null;
     world,
     ocean,
     coreRadius,
-    buffer: contextBuffer,
+    contextBuffer,
     landTarget,
     seed,
     config,
     protectedIdxSet,
+    frontierPlanStage,
+    frontierGeometryStage
   });
 
-  // Preserve frontier masks even if debug summary is omitted.
-  if (remaskRes?.frontier) {
-    frontierRidgeMask = remaskRes.frontier.frontierRidgeMask;
-    frontierRiverMask = remaskRes.frontier.frontierRiverMask;
-    frontierRiverFordMask = remaskRes.frontier.frontierRiverFordMask;
+  // Active frontier masks now come from semantic geometry stage (not remask output).
+  frontierRidgeMask = frontierGeometryStage.geometry?.ridgeMask ?? null;
+  frontierRiverMask = frontierGeometryStage.geometry?.riverMask ?? null;
+  frontierRiverFordMask = frontierGeometryStage.geometry?.riverFordMask ?? null;
+
+  const solved = kingdomBorderStage?.solved ?? null;
+  if (solved?.primaryMask) {
+    primaryMask = solved.primaryMask;
   }
 
-  // Capture a small summary for the JSON report.
-  if (remaskRes?.debug) {
-    const sum = {
-      ...remaskRes.debug,
-      coreRadius,
-      worldRadius,
-      contextBuffer,
-    };
-    if (remaskRes.frontier) {
-      const ridge = remaskRes.frontier.frontierRidgeMask;
-      const river = remaskRes.frontier.frontierRiverMask;
-      const ford = remaskRes.frontier.frontierRiverFordMask;
-
-      // Keep full masks for later terrain/hydrology painting.
-      frontierRidgeMask = ridge;
-      frontierRiverMask = river;
-      frontierRiverFordMask = ford;
-
-      const countOnes = (arr) => {
-        if (!arr) return 0;
-        let c = 0;
-        for (let i = 0; i < arr.length; i++) if (arr[i] === 1) c++;
-        return c;
-      };
-      const collectIdx = (arr) => {
-        if (!arr) return [];
-        const out = [];
-        for (let i = 0; i < arr.length; i++) if (arr[i] === 1) out.push(i);
-        return out;
-      };
-      sum.frontier = {
-        ridge_belt_tiles: countOnes(ridge),
-        river_belt_tiles: countOnes(river),
-        ford_tiles: countOnes(ford),
-        // Debug: index lists for QA PNG overlays (do not ship to runtime).
-        ridge_idx: collectIdx(ridge),
-        river_idx: collectIdx(river),
-        ford_idx: collectIdx(ford),
-      };
+  // Phase 4 debug structure: semantic plan + geometry + active solved border/interior.
+  frontierV2Debug = {
+    semantic_frontier_plan: frontierPlanStage,
+    semantic_geometry: frontierGeometryStage.semanticGeometry,
+    active_solved_border: {
+      border_idx: solved?.border_idx ?? [],
+      border_mask_idx: collectMaskIdx(solved?.borderMask),
+      contributing_segments: kingdomBorderStage?.debug?.scaffold_contributions ?? null,
+    },
+    active_solved_interior: {
+      interior_mask_idx: collectMaskIdx(solved?.interiorMask),
+      primary_mask_idx: collectMaskIdx(solved?.primaryMask),
+    },
+    optional_legacy_border_comparison: kingdomBorderStage?.legacyComparison ?? null,
+    current_realized_geometry: {
+      stage: frontierGeometryStage.stage,
+      delegate: frontierGeometryStage.delegate,
+      ...frontierGeometryStage.debug,
+      semantic_geometry: frontierGeometryStage.semanticGeometry,
+      legacy_comparison_details: frontierGeometryStage.legacyComparison,
+      ridge_idx: collectMaskIdx(frontierGeometryStage.geometry?.ridgeMask),
+      river_idx: collectMaskIdx(frontierGeometryStage.geometry?.riverMask),
+      ford_idx: collectMaskIdx(frontierGeometryStage.geometry?.riverFordMask)
+    },
+    mismatch_markers: {
+      ...(frontierGeometryStage?.debug?.mismatch_markers ?? {}),
+      active_border_solver_semantic: true,
+      legacy_remask_is_comparison_only: true,
+    },
+    current_kingdom_border_authoring: {
+      stage: kingdomBorderStage.stage,
+      delegate: kingdomBorderStage.delegate,
+      ...kingdomBorderStage.debug,
+      protected_idx_count: protectedIdxSet.size
     }
-    remaskSummary = sum;
-  }
+  };
 
-  if (remaskRes?.selectedMask) {
-    const sel = remaskRes.selectedMask;
-    primaryMask = sel;
-    for (let i = 0; i < tile_kind.length; i++) {
-      if (!inWorld[i]) continue;
-      if (tile_kind[i] !== "land") continue;
-      // Keep non-selected land as borderlands context (still land), but not part of the primary.
-      // County assignment later will be restricted to primaryMask==1.
-    }
-  } else if (remaskRes?.debug?.error) {
-    console.warn(`[remask] fallback (keeping original land mask): ${remaskRes.debug.error}`);
-  }
+  remaskSummary = {
+    active_border_solver: kingdomBorderStage?.delegate ?? null,
+    selected_tiles: countMaskOnes(primaryMask),
+    border_tiles: solved?.border_idx?.length ?? 0,
+    legacy_comparison: kingdomBorderStage?.legacyComparison ?? null,
+    frontier: {
+      ridge_belt_tiles: countMaskOnes(frontierRidgeMask),
+      river_belt_tiles: countMaskOnes(frontierRiverMask),
+      ford_tiles: countMaskOnes(frontierRiverFordMask),
+      ridge_idx: collectMaskIdx(frontierRidgeMask),
+      river_idx: collectMaskIdx(frontierRiverMask),
+      ford_idx: collectMaskIdx(frontierRiverFordMask),
+    },
+    coreRadius,
+    worldRadius,
+    contextBuffer,
+  };
 }
 
-// If remask did not produce a mask, treat all land as primary.
+// If semantic solve did not produce a mask, treat all land as primary.
 if (!primaryMask) {
   primaryMask = new Uint8Array(tile_kind.length);
   for (let i = 0; i < tile_kind.length; i++) {
@@ -3337,99 +4306,37 @@ if (!primaryMask) {
 
 // Major river (presentation-only): deterministic BFS path from far inland to the
 // river_end tile adjacent to the estuary.
-const majorRiverIdxSet = new Set();
-let majorRiverPathIdx = null;
-let majorRiverPathsIdx = null;
+const hydrologyProjectionStage = projectHydrologyFromFrontierV2({
+  width,
+  height,
+  inWorld,
+  tile_kind,
+  river_end,
+  seed,
+  config,
+  frontierPlanStage,
+  frontierGeometryStage,
+  kingdomBorderStage
+});
+const majorRiverIdxSet = hydrologyProjectionStage.majorRiverIdxSet;
+let majorRiverPathIdx = hydrologyProjectionStage.majorRiverPathIdx;
+let majorRiverPathsIdx = hydrologyProjectionStage.majorRiverPathsIdx;
+const freshwaterFrontierHydrology = hydrologyProjectionStage.freshwaterFrontierHydrology;
 
-// Generate the river network across all in-world land so hydrology can continue
-// naturally through borderlands as well as the primary kingdom.
-const tile_kind_hydro = tile_kind;
-
-if (river_end && Number.isInteger(river_end.idx)) {
-  let startIdx = null;
-  let bestD = -1;
-  for (let i = 0; i < tile_kind.length; i++) {
-    if (!inWorld[i]) continue;
-    if (tile_kind_hydro[i] !== "land") continue;
-    const q = i % width;
-    const r = Math.floor(i / width);
-    const d = axialDist(q, r, river_end.q, river_end.r);
-    if (d > bestD) { bestD = d; startIdx = i; }
-  }
-
-  if (startIdx != null) {
-    const pathIdx = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_hydro, startIdx, endIdx: river_end.idx, seed, config, tag: "major" });
-    if (pathIdx) {
-      majorRiverPathIdx = pathIdx;
-      for (const idx of pathIdx) majorRiverIdxSet.add(idx);
-
-      // Optional: add a major tributary to create a more plausible river system
-      // (still a single connected major-river component for validation).
-      // This provides a second macro divider line for counties to follow.
-      majorRiverPathsIdx = [pathIdx];
-      if (pathIdx.length >= 10) {
-        const joinIdx = pathIdx[Math.floor(pathIdx.length * 0.68)];
-
-        // Distance to trunk (BFS on land only).
-        const distToTrunk = new Int16Array(width * height);
-        distToTrunk.fill(-1);
-        {
-          const q = [];
-          for (const ii of pathIdx) {
-            distToTrunk[ii] = 0;
-            q.push(ii);
-          }
-          const dirs = defaultNeighborDirs();
-          for (let qi = 0; qi < q.length; qi++) {
-            const cur = q[qi];
-            const cd = distToTrunk[cur];
-            const cq = cur % width;
-            const cr = Math.floor(cur / width);
-            for (const d of dirs) {
-              const nq = cq + d.dq;
-              const nr = cr + d.dr;
-              if (!inBounds(nq, nr, width, height)) continue;
-              const ni = indexOf(nq, nr, width);
-              if (!inWorld[ni]) continue;
-              if (tile_kind_hydro[ni] !== "land") continue;
-              if (distToTrunk[ni] !== -1) continue;
-              distToTrunk[ni] = cd + 1;
-              q.push(ni);
-            }
-          }
-        }
-
-        // Pick a tributary source far from the confluence AND not right next to the trunk.
-        let tribStart = null;
-        let bestScore = -1;
-        const jQ = joinIdx % width;
-        const jR = Math.floor(joinIdx / width);
-        for (let i = 0; i < tile_kind.length; i++) {
-          if (!inWorld[i]) continue;
-          if (tile_kind_hydro[i] !== "land") continue;
-          if (majorRiverIdxSet.has(i)) continue;
-          const q = i % width;
-          const r = Math.floor(i / width);
-          const dJoin = axialDist(q, r, jQ, jR);
-          const dTr = distToTrunk[i] >= 0 ? distToTrunk[i] : 0;
-          const score = dJoin + Math.floor(dTr * 0.6);
-          if (score > bestScore || (score === bestScore && (tribStart == null || i < tribStart))) {
-            bestScore = score;
-            tribStart = i;
-          }
-        }
-
-        if (tribStart != null) {
-          const tribSeed = `${seed}|tributary_v1`;
-          const tribPath = computeRiverPathMeandered({ width, height, inWorld, tile_kind: tile_kind_hydro, startIdx: tribStart, endIdx: joinIdx, seed: tribSeed, config, tag: "tributary" });
-          if (tribPath && tribPath.length >= 6) {
-            majorRiverPathsIdx.push(tribPath);
-            for (const idx of tribPath) majorRiverIdxSet.add(idx);
-          }
-        }
-      }
-    }
-  }
+if (frontierV2Debug) {
+  frontierV2Debug.active_frontier_hydrology = {
+    stage: hydrologyProjectionStage.stage,
+    delegate: hydrologyProjectionStage.delegate,
+    ...hydrologyProjectionStage.debug,
+    trunk_segments_used: hydrologyProjectionStage.trunkSegmentsUsed,
+    freshwater_frontier_hydrology: {
+      mode: hydrologyProjectionStage.freshwaterFrontierHydrology?.mode ?? null,
+      active_idx: hydrologyProjectionStage.freshwaterFrontierHydrology?.active_idx ?? [],
+      tributary_idx: hydrologyProjectionStage.freshwaterFrontierHydrology?.tributary_idx ?? null,
+    },
+    optional_legacy_hydrology_comparison: hydrologyProjectionStage.legacyComparison,
+    major_river_idx: majorRiverPathIdx ?? [],
+  };
 }
 
 // Build hexes
@@ -3463,6 +4370,8 @@ for (let i = 0; i < total; i++) {
   if (tk === "land") {
     if (majorRiverIdxSet.has(i)) {
       h.hydrology = { river_class: "major" };
+    } else if (freshwaterFrontierHydrology?.active_idx_set?.has(i)) {
+      h.hydrology = { river_class: "minor" };
     }
   }
 
@@ -3482,7 +4391,7 @@ assignTerrain({ width, height, hexes, estuaryIdxSet: estuaryTiles, majorRiverIdx
 
 // Partition counties (Patch B: County v2)
 //
-// Primary land = remask-selected kingdom land (primaryMask==1).
+// Primary land = border-solve-selected kingdom land (primaryMask==1).
 // Borderlands land = all other inWorld land (tile_kind==land but primaryMask==0), with no counties.
 const landIdxAll = [];
 const landIdxPrimary = [];
@@ -4058,30 +4967,28 @@ const seed_quota = Math.ceil(alphaQuota * avg);
 // Terrain + Hydrology painting pass (M3): lakes, drainage-based marsh, and frontier belts.
 // Run before county-border tuning so secondary county pass can snap to painted water/terrain.
 {
-  const debug = {};
-  paintTerrainHydrologyV1({
+  const terrainProjectionStage = projectTerrainFromFrontierV2({
     seed,
     width,
     height,
     hexes,
-    landIdx: landIdxAll,
-    distToSea: distToSeaAll,
-    distToVoid: distToVoidAll,
-    distToMajorRiver: distToMajorRiverAll,
+    landIdxAll,
+    distToSeaAll,
+    distToVoidAll,
+    distToMajorRiverAll,
     macroStyleId,
     macroRidgeMask,
     macroBasinId,
     frontierRidgeMask,
     frontierRiverMask,
     frontierRiverFordMask,
-    estuaryIdxSet: new Set(estuaryTiles ?? []),
+    estuaryTiles,
     majorRiverIdxSet,
-    protectedIdxSet: seatProtect,
+    seatProtect,
     seatsIdx,
-    config,
-    debugOut: debug
+    config
   });
-  terrainHydroSummary = debug;
+  terrainHydroSummary = terrainProjectionStage.debug;
 }
 
 // Derive fixed county loop order from FINAL seat positions (distance-to-center)
@@ -4497,6 +5404,7 @@ ensureDir(path.dirname(reportPath));
     public_out: publicOut,
     seed,
 		remask: remaskSummary,
+    frontier_v2_debug: frontierV2Debug,
     terrain_hydro: terrainHydroSummary,
     config_path: configPath,
     config_sha256: map.config_sha256,
