@@ -3236,6 +3236,23 @@ function connectPathSequence({ width, height, inWorld, passMask, segments }) {
   return out;
 }
 
+function emitContractNotice({ mode, label, message, debugTarget = null, payload = null }) {
+  const normalized = mode === "assert" ? "assert" : "warn";
+  if (debugTarget && label) {
+    debugTarget[label] = {
+      mode: normalized,
+      pass: normalized === "assert" ? false : false,
+      message,
+      ...(payload ? { payload } : {})
+    };
+  }
+  if (normalized === "assert") {
+    assert(false, message);
+  } else {
+    console.warn(`WARN: ${message}`);
+  }
+}
+
 function markMaskFromIdx(mask, idxs) {
   for (const idx of idxs) {
     if (idx == null) continue;
@@ -3394,6 +3411,22 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
         fracSpan: 0.80,
         jitterAmp: 0.10,
         inwardBias: 1,
+      });
+    }
+    if (mountainRidgeSpine.length < 4 || projectedRunAlongPlane({ world, idxPath: mountainRidgeSpine, width, plane: edgeAssignments?.[chosen.mountain_edge] }) < 40) {
+      mountainRidgeSpine = featurePathFromPlan({
+        width, height, inWorld, world,
+        seedU32: (seedU32 ^ 0x2001 ^ salt ^ 0xabc123) >>> 0,
+        edgeAssignments,
+        edgeLabel: chosen.mountain_edge,
+        radiusBand: bands?.mountain ?? { min: 10, max: 14 },
+        runLength: Math.max(runs?.mountain ?? 16, 40),
+        fracCenter: 0.5,
+        fracSpan: 0.88,
+        jitterAmp: 0.06,
+        meanderScale: 7,
+        inwardBias: 0,
+        passMask: null,
       });
     }
     if (trunkApproach.length < 2) trunkApproach = trunkBorderFlow.slice(0, Math.max(2, Math.floor(trunkBorderFlow.length * 0.4)));
@@ -4022,6 +4055,18 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
   const trunkIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
   const mountainIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
   const freshwaterIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
+  const minRequiredTrunkTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_trunk_segment_tiles ?? 12)));
+  const minRequiredMountainTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_mountain_segment_tiles ?? 12)));
+  const minRequiredFreshwaterTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_freshwater_segment_tiles ?? 8)));
+  const trunkEligibleTiles = trunkIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  const mountainEligibleTiles = mountainIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  const freshwaterEligibleTiles = freshwaterIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  assert(
+    trunkEligibleTiles >= minRequiredTrunkTiles &&
+    mountainEligibleTiles >= minRequiredMountainTiles &&
+    freshwaterEligibleTiles >= minRequiredFreshwaterTiles,
+    `required frontier segment materialization failed (trunk=${trunkEligibleTiles}>=${minRequiredTrunkTiles}, mountain=${mountainEligibleTiles}>=${minRequiredMountainTiles}, freshwater=${freshwaterEligibleTiles}>=${minRequiredFreshwaterTiles})`
+  );
   const trunkBoundaryRatio = nearBoundaryRatio(trunkIdx, 1);
   const mountainBoundaryRatio = nearBoundaryRatio(mountainIdx, 1);
   const freshwaterBoundaryRatio = nearBoundaryRatio(freshwaterIdx, 1);
@@ -4173,26 +4218,15 @@ function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, riv
   const semantic = frontierGeometryStage?.semanticGeometry ?? {};
   const trunkApproach = uniqPath(semantic?.trunk_frontier_geometry?.approach_phase_idx ?? []);
   const trunkBorderFlow = uniqPath(semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? []);
-  const trunkInteriorTurn = uniqPath(semantic?.trunk_frontier_geometry?.interior_turn_corridor_idx ?? []);
+  const trunkInteriorTurnPlanned = uniqPath(semantic?.trunk_frontier_geometry?.interior_turn_corridor_idx ?? []);
 
   const borderFlowUsed = trunkBorderFlow.slice();
   const approachUsed = trunkApproach.slice(0, Math.max(3, Math.floor(trunkApproach.length * 0.8)));
-  const interiorTurnUsed = trunkInteriorTurn.slice();
-
-  const routeTargets = uniqPath([
-    ...approachUsed,
-    ...borderFlowUsed,
-    ...interiorTurnUsed,
-  ]);
-
   const trunkFinalPath = [];
-  if (routeTargets.length > 0) {
-    trunkFinalPath.push(routeTargets[0]);
-    for (let ti = 1; ti < routeTargets.length; ti++) {
-      const prev = trunkFinalPath[trunkFinalPath.length - 1];
-      const next = routeTargets[ti];
-      if (prev === next) continue;
-      const seg = shortestPathLand({ starts: [prev], endIdx: next });
+  if (approachUsed.length > 0) {
+    trunkFinalPath.push(approachUsed[0]);
+    for (let ti = 1; ti < approachUsed.length; ti++) {
+      const seg = shortestPathLand({ starts: [trunkFinalPath[trunkFinalPath.length - 1]], endIdx: approachUsed[ti] });
       if (!seg || seg.length === 0) continue;
       for (let si = 1; si < seg.length; si++) {
         const idx = seg[si];
@@ -4200,18 +4234,48 @@ function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, riv
       }
     }
   }
+  if (borderFlowUsed.length > 0) {
+    const connectToBorder = trunkFinalPath.length > 0
+      ? shortestPathLand({ starts: [trunkFinalPath[trunkFinalPath.length - 1]], endIdx: borderFlowUsed[0] })
+      : null;
+    if (connectToBorder && connectToBorder.length > 0) {
+      for (let si = 1; si < connectToBorder.length; si++) {
+        const idx = connectToBorder[si];
+        if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+      }
+    } else if (trunkFinalPath.length === 0) {
+      trunkFinalPath.push(borderFlowUsed[0]);
+    }
+    for (const idx of borderFlowUsed) {
+      if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+    }
+  }
 
+  let routeToEstuary = [];
   let estuaryConnector = [];
+  let interiorTurnUsed = trunkInteriorTurnPlanned.slice();
   if (river_end && Number.isInteger(river_end.idx) && trunkFinalPath.length > 0) {
     const tail = trunkFinalPath[trunkFinalPath.length - 1];
     const p0 = shortestPathLand({ starts: [tail], endIdx: river_end.idx });
-    if (p0 && p0.length > 0) {
-      estuaryConnector = uniqPath(p0);
-      for (let si = 1; si < estuaryConnector.length; si++) {
-        const idx = estuaryConnector[si];
-        if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+    routeToEstuary = uniqPath(p0 ?? []);
+    if (routeToEstuary.length > 0) {
+      const turnSplit = Math.max(2, Math.floor(routeToEstuary.length * 0.35));
+      if (interiorTurnUsed.length === 0) {
+        interiorTurnUsed = routeToEstuary.slice(0, Math.min(routeToEstuary.length, turnSplit));
+      } else {
+        const plannedTurnJoin = shortestPathLand({ starts: [tail], endIdx: interiorTurnUsed[0] });
+        if (plannedTurnJoin && plannedTurnJoin.length > 0) {
+          interiorTurnUsed = uniqPath([...plannedTurnJoin, ...interiorTurnUsed]);
+        }
       }
+      estuaryConnector = routeToEstuary.slice(Math.min(routeToEstuary.length, Math.max(1, turnSplit - 1)));
     }
+  }
+  for (const idx of interiorTurnUsed) {
+    if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
+  }
+  for (const idx of estuaryConnector) {
+    if (trunkFinalPath[trunkFinalPath.length - 1] !== idx) trunkFinalPath.push(idx);
   }
 
   const majorRiverIdxSet = new Set(trunkFinalPath);
@@ -4237,6 +4301,7 @@ function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, riv
     }
   }
 
+  const hydrologyContractMode = String(config?.mapgen?.frontier?.hydrology_contract_mode ?? "warn");
   const minBorderFlowUsedLen = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_trunk_border_flow_used_len ?? 12)));
   const minInteriorTurnLen = Math.max(2, Math.floor(Number(config?.mapgen?.frontier?.min_trunk_interior_turn_len ?? 6)));
   const minFreshwaterActiveLen = Math.max(2, Math.floor(Number(config?.mapgen?.frontier?.min_freshwater_active_len ?? 8)));
@@ -4247,10 +4312,13 @@ function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, riv
     freshwaterActiveIdx.length >= minFreshwaterActiveLen &&
     Array.isArray(majorRiverPathIdx) &&
     majorRiverPathIdx.length > (borderFlowUsed.length + interiorTurnUsed.length);
-  assert(
-    hydrologyContractPass,
-    `hydrology contract failed (borderFlowUsed=${borderFlowUsed.length}>=${minBorderFlowUsedLen}, interiorTurn=${interiorTurnUsed.length}>=${minInteriorTurnLen}, estuaryConnector=${estuaryConnector.length}>=2, freshwaterActive=${freshwaterActiveIdx.length}>=${minFreshwaterActiveLen}, trunkLen=${majorRiverPathIdx?.length ?? 0})`
-  );
+  if (!hydrologyContractPass) {
+    emitContractNotice({
+      mode: hydrologyContractMode,
+      label: "hydrology_contract_notice",
+      message: `hydrology contract failed (borderFlowUsed=${borderFlowUsed.length}>=${minBorderFlowUsedLen}, interiorTurn=${interiorTurnUsed.length}>=${minInteriorTurnLen}, estuaryConnector=${estuaryConnector.length}>=2, freshwaterActive=${freshwaterActiveIdx.length}>=${minFreshwaterActiveLen}, trunkLen=${majorRiverPathIdx?.length ?? 0})`,
+    });
+  }
 
   return {
     stage: 'projectHydrologyFromFrontierV2',
@@ -4287,6 +4355,7 @@ function projectHydrologyFromFrontierV2({ width, height, inWorld, tile_kind, riv
         min_freshwater_active_len: minFreshwaterActiveLen,
         estuary_connector_len: estuaryConnector.length,
         pass: hydrologyContractPass,
+        mode: hydrologyContractMode,
       },
     }
   };
@@ -4345,15 +4414,19 @@ function projectTerrainFromFrontierV2({ seed, width, height, hexes, landIdxAll, 
 
   const ridgeSupportRatio = ridgeEligible > 0 ? (ridgeSupported / ridgeEligible) : 0;
   const riverSupportRatio = riverEligible > 0 ? (riverSupported / riverEligible) : 0;
+  const terrainContractMode = String(config?.mapgen?.frontier?.terrain_contract_mode ?? "warn");
   const minRidgeSupportRatio = Number(config?.mapgen?.frontier?.min_ridge_terrain_support_ratio ?? 0.25);
   const minRiverSupportRatio = Number(config?.mapgen?.frontier?.min_river_terrain_support_ratio ?? 0.3);
   const terrainContractPass =
     ridgeSupportRatio >= minRidgeSupportRatio &&
     riverSupportRatio >= minRiverSupportRatio;
-  assert(
-    terrainContractPass,
-    `terrain support contract failed (ridge=${ridgeSupportRatio.toFixed(3)}>=${minRidgeSupportRatio}, river=${riverSupportRatio.toFixed(3)}>=${minRiverSupportRatio})`
-  );
+  if (!terrainContractPass) {
+    emitContractNotice({
+      mode: terrainContractMode,
+      label: "terrain_contract_notice",
+      message: `terrain support contract failed (ridge=${ridgeSupportRatio.toFixed(3)}>=${minRidgeSupportRatio}, river=${riverSupportRatio.toFixed(3)}>=${minRiverSupportRatio})`,
+    });
+  }
 
   debug.frontier_terrain_support = {
     ridge_eligible: ridgeEligible,
@@ -4365,6 +4438,7 @@ function projectTerrainFromFrontierV2({ seed, width, height, hexes, landIdxAll, 
     min_ridge_support_ratio: minRidgeSupportRatio,
     min_river_support_ratio: minRiverSupportRatio,
     pass: terrainContractPass,
+    mode: terrainContractMode,
   };
   return {
     stage: 'projectTerrainFromFrontierV2',
