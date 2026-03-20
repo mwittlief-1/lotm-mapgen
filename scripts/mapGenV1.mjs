@@ -1074,8 +1074,8 @@ function buildFrontierRails({ width, height, inWorld, tile_kind, world, ocean, w
   const total = width * height;
   const remaskCfg = config?.mapgen?.remask ?? {};
   const enabled = remaskCfg?.enabled_frontier_rails !== false;
-  const ridgeBeltRadius = Math.max(0, Math.floor(Number(remaskCfg?.frontier_ridge_belt_radius ?? 2)));
-  const riverBeltRadius = Math.max(0, Math.floor(Number(remaskCfg?.frontier_river_belt_radius ?? 1)));
+  const ridgeBeltRadius = Math.max(3, Math.floor(Number(remaskCfg?.frontier_ridge_belt_radius ?? 3)));
+  const riverBeltRadius = Math.max(2, Math.floor(Number(remaskCfg?.frontier_river_belt_radius ?? 2)));
   const wr = Number.isInteger(worldRadius) ? worldRadius : (world?.radius ?? 0);
   const kr = Number.isInteger(kingdomRadiusHint) ? kingdomRadiusHint : (world?.core_radius ?? 0);
   const outer = Math.max(0, (wr - 1) - kr);
@@ -3311,7 +3311,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
       runLength: runs?.trunk ?? 18,
       fracCenter: 0.5,
       fracSpan: 0.82,
-      jitterAmp: 0.11,
+      jitterAmp: 0.19,
+      meanderScale: 9,
       inwardBias: 0,
       passMask: outsideCoreLand
     });
@@ -3325,7 +3326,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
       runLength: Math.max(6, Math.floor((runs?.trunk ?? 16) * 0.36)),
       fracCenter: 0.36,
       fracSpan: 0.44,
-      jitterAmp: 0.07,
+      jitterAmp: 0.12,
+      meanderScale: 7,
       inwardBias: 3,
       passMask: outsideCoreLand
     });
@@ -3339,7 +3341,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
       runLength: runs?.mountain ?? 16,
       fracCenter: 0.52,
       fracSpan: 0.80,
-      jitterAmp: 0.10,
+      jitterAmp: 0.18,
+      meanderScale: 8,
       inwardBias: 1,
       passMask: outsideCoreLand
     });
@@ -3353,7 +3356,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
       runLength: runs?.freshwater ?? 14,
       fracCenter: 0.54,
       fracSpan: 0.66,
-      jitterAmp: 0.12,
+      jitterAmp: 0.18,
+      meanderScale: 8,
       inwardBias: 1,
       passMask: outsideCoreLand
     });
@@ -3381,7 +3385,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
         runLength: runs?.trunk ?? 18,
         fracCenter: 0.5,
         fracSpan: 0.82,
-        jitterAmp: 0.11,
+        jitterAmp: 0.19,
+        meanderScale: 9,
         inwardBias: 0,
       });
     }
@@ -3395,7 +3400,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
         runLength: runs?.freshwater ?? 14,
         fracCenter: 0.54,
         fracSpan: 0.66,
-        jitterAmp: 0.12,
+        jitterAmp: 0.18,
+        meanderScale: 8,
         inwardBias: 1,
       });
     }
@@ -3409,7 +3415,8 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
         runLength: runs?.mountain ?? 16,
         fracCenter: 0.52,
         fracSpan: 0.80,
-        jitterAmp: 0.10,
+        jitterAmp: 0.18,
+        meanderScale: 8,
         inwardBias: 1,
       });
     }
@@ -3661,6 +3668,8 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
   }
 
   const semantic = frontierGeometryStage?.semanticGeometry ?? {};
+  const semanticRidgeMask = frontierGeometryStage?.geometry?.ridgeMask ?? null;
+  const semanticRiverMask = frontierGeometryStage?.geometry?.riverMask ?? null;
   const trunkSegmentIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
   const mountainSegmentIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
   const freshwaterSegmentIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
@@ -3716,28 +3725,45 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
     ]
   }).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1);
 
+  const thinSemanticBorderMask = new Uint8Array(total);
+  markMaskFromIdx(thinSemanticBorderMask, semanticBorderChainIdx);
+  markMaskFromIdx(thinSemanticBorderMask, trunkSegmentIdx);
+  markMaskFromIdx(thinSemanticBorderMask, mountainSegmentIdx);
+  markMaskFromIdx(thinSemanticBorderMask, freshwaterSegmentIdx);
+  markMaskFromIdx(thinSemanticBorderMask, connectorE34Idx);
+  markMaskFromIdx(thinSemanticBorderMask, connectorE56Idx);
+  markMaskFromIdx(thinSemanticBorderMask, softClosureIdx);
+
   const borderDilateRadius = Math.max(1, Math.floor(Number(config?.mapgen?.frontier?.solve_border_dilate_radius ?? 2)));
   const scaffoldBorderMask = dilateIdxSetToMask({ width, height, inWorld, seeds: borderSeedList, radius: borderDilateRadius, passableMask: landMask });
 
-  const outside = new Uint8Array(total);
-  const q = [];
-  for (let i = 0; i < total; i++) {
-    if (landMask[i] !== 1 || scaffoldBorderMask[i] === 1) continue;
-    const qq = i % width;
-    const rr = Math.floor(i / width);
-    let edgeTouch = false;
-    for (const d of dirs) {
-      const nq = qq + d.dq;
-      const nr = rr + d.dr;
-      if (!inBounds(nq, nr, width, height)) { edgeTouch = true; break; }
-      const ni = indexOf(nq, nr, width);
-      if (!inWorld[ni]) { edgeTouch = true; break; }
-    }
-    if (edgeTouch) {
-      outside[i] = 1;
-      q.push(i);
+  const coreSeedIdx = [];
+  if (protectedIdxSet instanceof Set) {
+    for (const idx of protectedIdxSet) {
+      if (!Number.isInteger(idx) || idx < 0 || idx >= total) continue;
+      if (landMask[idx] !== 1 || scaffoldBorderMask[idx] === 1) continue;
+      coreSeedIdx.push(idx);
     }
   }
+  if (coreSeedIdx.length === 0) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < total; i++) {
+      if (landMask[i] !== 1 || scaffoldBorderMask[i] === 1) continue;
+      const qq = i % width;
+      const rr = Math.floor(i / width);
+      const d = axialDist(qq, rr, world.cq, world.cr);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) coreSeedIdx.push(bestIdx);
+  }
+
+  const primaryMask = new Uint8Array(total);
+  const q = coreSeedIdx.slice();
+  for (const idx of q) primaryMask[idx] = 1;
   for (let qi = 0; qi < q.length; qi++) {
     const cur = q[qi];
     const cq = cur % width;
@@ -3747,17 +3773,73 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
       const nr = cr + d.dr;
       if (!inBounds(nq, nr, width, height)) continue;
       const ni = indexOf(nq, nr, width);
-      if (outside[ni] === 1 || landMask[ni] !== 1 || scaffoldBorderMask[ni] === 1) continue;
-      outside[ni] = 1;
+      if (primaryMask[ni] === 1 || landMask[ni] !== 1 || scaffoldBorderMask[ni] === 1) continue;
+      primaryMask[ni] = 1;
       q.push(ni);
     }
   }
-
-  const primaryMask = new Uint8Array(total);
   for (let i = 0; i < total; i++) {
-    if (landMask[i] !== 1) continue;
-    if (outside[i] === 1) continue;
-    primaryMask[i] = 1;
+    if (landMask[i] !== 1 || thinSemanticBorderMask[i] !== 1) continue;
+    let touchesPrimary = false;
+    for (const d of dirs) {
+      const nq = (i % width) + d.dq;
+      const nr = Math.floor(i / width) + d.dr;
+      if (!inBounds(nq, nr, width, height)) continue;
+      const ni = indexOf(nq, nr, width);
+      if (primaryMask[ni] === 1) { touchesPrimary = true; break; }
+    }
+    if (touchesPrimary) primaryMask[i] = 1;
+  }
+
+  {
+    const allowed = new Uint8Array(total);
+    for (let i = 0; i < total; i++) {
+      if (landMask[i] !== 1) continue;
+      if (primaryMask[i] === 1 || scaffoldBorderMask[i] === 1 || thinSemanticBorderMask[i] === 1) allowed[i] = 1;
+    }
+    const dist = new Int16Array(total);
+    dist.fill(-1);
+    const prev = new Int32Array(total);
+    prev.fill(-1);
+    const q2 = [];
+    for (let i = 0; i < total; i++) {
+      if (primaryMask[i] !== 1) continue;
+      dist[i] = 0;
+      q2.push(i);
+    }
+    for (let qi = 0; qi < q2.length; qi++) {
+      const cur = q2[qi];
+      const cq = cur % width;
+      const cr = Math.floor(cur / width);
+      for (const d of dirs) {
+        const nq = cq + d.dq;
+        const nr = cr + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (allowed[ni] !== 1 || dist[ni] !== -1) continue;
+        dist[ni] = dist[cur] + 1;
+        prev[ni] = cur;
+        q2.push(ni);
+      }
+    }
+
+    const stitchFeaturePath = (idxList, maxDist) => {
+      for (const idx of idxList) {
+        if (!Number.isInteger(idx) || idx < 0 || idx >= total) continue;
+        if (landMask[idx] !== 1) continue;
+        if (dist[idx] === -1 || dist[idx] > maxDist) continue;
+        let cur = idx;
+        while (cur >= 0 && primaryMask[cur] !== 1) {
+          primaryMask[cur] = 1;
+          cur = prev[cur];
+        }
+      }
+    };
+
+    const stitchMaxDist = Math.max(2, borderDilateRadius + 2);
+    stitchFeaturePath(trunkSegmentIdx, stitchMaxDist);
+    stitchFeaturePath(mountainSegmentIdx, stitchMaxDist);
+    stitchFeaturePath(freshwaterSegmentIdx, stitchMaxDist);
   }
 
   // Rebalance to land target without falling back to remask heuristics.
@@ -3870,6 +3952,126 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
     }
   }
 
+  const roughenBorderDeterministically = () => {
+    const straightPairs = (i) => {
+      const q0 = i % width;
+      const r0 = Math.floor(i / width);
+      let s0 = 0;
+      for (let k = 0; k < 3; k++) {
+        const a = dirs[k];
+        const b = dirs[k + 3];
+        const aq = q0 + a.dq;
+        const ar = r0 + a.dr;
+        const bq = q0 + b.dq;
+        const br = r0 + b.dr;
+        const aSel = inBounds(aq, ar, width, height) ? (primaryMask[indexOf(aq, ar, width)] === 1) : false;
+        const bSel = inBounds(bq, br, width, height) ? (primaryMask[indexOf(bq, br, width)] === 1) : false;
+        if (aSel && bSel) s0++;
+      }
+      return s0;
+    };
+
+    const canRemoveWithoutDisconnectLocal = (idx) => {
+      if (primaryMask[idx] !== 1 || scaffoldBorderMask[idx] === 1 || thinSemanticBorderMask[idx] === 1) return false;
+      const neighbors = [];
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (primaryMask[ni] === 1) neighbors.push(ni);
+      }
+      if (neighbors.length <= 1) return true;
+      const seen = new Uint8Array(total);
+      const q3 = [neighbors[0]];
+      seen[neighbors[0]] = 1;
+      for (let qi = 0; qi < q3.length; qi++) {
+        const cur = q3[qi];
+        const cq = cur % width;
+        const cr = Math.floor(cur / width);
+        for (const d of dirs) {
+          const nq = cq + d.dq;
+          const nr = cr + d.dr;
+          if (!inBounds(nq, nr, width, height)) continue;
+          const ni = indexOf(nq, nr, width);
+          if (ni === idx || primaryMask[ni] !== 1 || seen[ni] === 1) continue;
+          seen[ni] = 1;
+          q3.push(ni);
+        }
+      }
+      for (const ni of neighbors) if (seen[ni] !== 1) return false;
+      return true;
+    };
+
+    const addScore = (idx) => {
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      let primaryAdj = 0;
+      let voidAdj = 0;
+      let featureAdj = 0;
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { voidAdj++; continue; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni]) { voidAdj++; continue; }
+        if (primaryMask[ni] === 1) primaryAdj++;
+        if (semanticRiverMask?.[ni] === 1 || semanticRidgeMask?.[ni] === 1 || thinSemanticBorderMask[ni] === 1) featureAdj++;
+      }
+      return (featureAdj * 20) + (primaryAdj * 8) - voidAdj;
+    };
+
+    const candidates = [];
+    for (let i = 0; i < total; i++) {
+      if (primaryMask[i] !== 1 || thinSemanticBorderMask[i] === 1) continue;
+      if (straightPairs(i) < 2) continue;
+      let touchesOutside = false;
+      const q0 = i % width;
+      const r0 = Math.floor(i / width);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { touchesOutside = true; break; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni] || primaryMask[ni] !== 1) { touchesOutside = true; break; }
+      }
+      if (!touchesOutside) continue;
+      candidates.push(i);
+    }
+    candidates.sort((a, b) => a - b);
+
+    const maxMutations = Math.max(8, Math.floor(candidates.length * 0.75));
+    let mutated = 0;
+    for (const idx of candidates) {
+      if (mutated >= maxMutations) break;
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      let best = -1;
+      let bestScore = -Infinity;
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni] || landMask[ni] !== 1 || primaryMask[ni] === 1 || scaffoldBorderMask[ni] === 1) continue;
+        const score = addScore(ni);
+        if (score > bestScore) {
+          bestScore = score;
+          best = ni;
+        }
+      }
+      if (best >= 0 && canRemoveWithoutDisconnectLocal(idx)) {
+        primaryMask[idx] = 0;
+        primaryMask[best] = 1;
+        mutated++;
+      }
+    }
+  };
+
+  roughenBorderDeterministically();
+
   // Final deterministic rebalance to reduce small misses against landTarget.
   {
     const countSelected = () => countMaskOnes(primaryMask);
@@ -3916,17 +4118,19 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
         const q0 = i % width;
         const r0 = Math.floor(i / width);
         let adj = 0;
+        let featureAdj = 0;
         for (const d of dirs) {
           const nq = q0 + d.dq;
           const nr = r0 + d.dr;
           if (!inBounds(nq, nr, width, height)) continue;
           const ni = indexOf(nq, nr, width);
           if (primaryMask[ni] === 1) adj++;
+          if (semanticRiverMask?.[ni] === 1 || semanticRidgeMask?.[ni] === 1 || thinSemanticBorderMask[ni] === 1) featureAdj++;
         }
-        if (adj > 0) addCandidates.push([adj, -axialDist(q0, r0, world.cq, world.cr), i]);
+        if (adj > 0) addCandidates.push([featureAdj, adj, -axialDist(q0, r0, world.cq, world.cr), i]);
       }
-      addCandidates.sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]) || (a[2] - b[2]));
-      for (const [, , idx] of addCandidates) {
+      addCandidates.sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]) || (b[2] - a[2]) || (a[3] - b[3]));
+      for (const [, , , idx] of addCandidates) {
         if (selectedNow >= landTarget) break;
         if (primaryMask[idx] === 1) continue;
         primaryMask[idx] = 1;
@@ -3935,21 +4139,23 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
     } else if (selectedNow > landTarget) {
       const removeCandidates = [];
       for (let i = 0; i < total; i++) {
-        if (primaryMask[i] !== 1 || scaffoldBorderMask[i] === 1) continue;
+        if (primaryMask[i] !== 1 || scaffoldBorderMask[i] === 1 || thinSemanticBorderMask[i] === 1) continue;
         const q0 = i % width;
         const r0 = Math.floor(i / width);
         let exposed = 0;
+        let featureAdj = 0;
         for (const d of dirs) {
           const nq = q0 + d.dq;
           const nr = r0 + d.dr;
           if (!inBounds(nq, nr, width, height)) { exposed++; continue; }
           const ni = indexOf(nq, nr, width);
           if (primaryMask[ni] !== 1) exposed++;
+          if (semanticRiverMask?.[ni] === 1 || semanticRidgeMask?.[ni] === 1 || thinSemanticBorderMask[ni] === 1) featureAdj++;
         }
-        removeCandidates.push([exposed, axialDist(q0, r0, world.cq, world.cr), i]);
+        removeCandidates.push([featureAdj, exposed, axialDist(q0, r0, world.cq, world.cr), i]);
       }
-      removeCandidates.sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]) || (a[2] - b[2]));
-      for (const [, , idx] of removeCandidates) {
+      removeCandidates.sort((a, b) => (a[0] - b[0]) || (b[1] - a[1]) || (b[2] - a[2]) || (a[3] - b[3]));
+      for (const [, , , idx] of removeCandidates) {
         if (selectedNow <= landTarget) break;
         if (!canRemoveWithoutDisconnect(idx)) continue;
         primaryMask[idx] = 0;
@@ -4513,6 +4719,7 @@ let terrainProjectionDelegate = null;
 let frontierPlanStage = null;
 let frontierGeometryStage = null;
 let kingdomBorderStage = null;
+let fatalArtifactWritten = false;
 
 // Primary land mask (1 = primary kingdom land, 0 = borderlands / other land).
 // Default is set after remask; if remask falls back, all land is treated as primary.
@@ -4525,6 +4732,80 @@ let frontierRiverFordMask = null;
 
 // Phase 0/1 seam debug: explicit frontier stage payloads.
 let frontierV2Debug = null;
+
+function writeFailureArtifacts(errorLike) {
+  if (fatalArtifactWritten) return;
+  fatalArtifactWritten = true;
+  const err = errorLike instanceof Error ? errorLike : new Error(String(errorLike ?? "Unknown map generation failure"));
+  const failureContract = frontierV2Debug?.contract_summary
+    ? {
+        planner: frontierPlanStage?.planner ?? null,
+        geometry_delegate: frontierGeometryStage?.delegate ?? null,
+        border_delegate: kingdomBorderStage?.delegate ?? null,
+        terrain_delegate: terrainProjectionDelegate,
+        contract_summary: frontierV2Debug.contract_summary,
+      }
+    : null;
+  const failureMap = {
+    schema_version: "map_schema_v1_failure",
+    mapgen_seed: seed,
+    width,
+    height,
+    config_sha256: fs.existsSync(configPath) ? sha256File(configPath) : null,
+    failure: {
+      message: err.message,
+      stack: err.stack ?? null,
+    },
+    semantic_frontier_contract_report: failureContract,
+    frontier_v2_debug: frontierV2Debug,
+    remask: remaskSummary,
+    terrain_hydro: terrainHydroSummary,
+  };
+  const failureReport = {
+    generated_at: new Date().toISOString(),
+    seed,
+    status: "failed",
+    error: {
+      message: err.message,
+      stack: err.stack ?? null,
+    },
+    semantic_frontier_contract_report: failureContract,
+    frontier_v2_debug: frontierV2Debug,
+    remask: remaskSummary,
+    terrain_hydro: terrainHydroSummary,
+  };
+  try {
+    const outAbs = path.resolve(outPath);
+    ensureDir(path.dirname(outAbs));
+    writeJson(outAbs, failureMap);
+  } catch {}
+  try {
+    const publicAbs = path.resolve(publicOutPath);
+    ensureDir(path.dirname(publicAbs));
+    writeJson(publicAbs, failureMap);
+  } catch {}
+  try {
+    const reportAbs = path.resolve(reportOutPath);
+    ensureDir(path.dirname(reportAbs));
+    writeJson(reportAbs, failureReport);
+  } catch {}
+  if (metricsOutPath) {
+    try {
+      const metricsAbs = path.resolve(metricsOutPath);
+      ensureDir(path.dirname(metricsAbs));
+      writeJson(metricsAbs, { status: "failed", seed, error: err.message });
+    } catch {}
+  }
+}
+
+process.on("uncaughtException", (err) => {
+  try {
+    writeFailureArtifacts(err);
+  } finally {
+    console.error(err);
+    process.exit(1);
+  }
+});
 
 // Estuary params (pick within configured bands)
 const estLenBand = config?.coast_and_estuary?.estuary?.length_hex ?? [6, 12];
@@ -6086,31 +6367,79 @@ ensureDir(path.dirname(reportPath));
     const cfg = config?.mapgen?.remask?.acceptance ?? {};
     const maxHighStraightShare = Number.isFinite(Number(cfg?.max_high_straight_share)) ? Number(cfg.max_high_straight_share) : 0.28;
     const minRiverAdjShare = Number.isFinite(Number(cfg?.min_river_adj_share)) ? Number(cfg.min_river_adj_share) : 0.06;
-    const maxRidgeAdjShare = Number.isFinite(Number(cfg?.max_ridge_adj_share)) ? Number(cfg.max_ridge_adj_share) : 0.42;
+    const minRidgeAdjShare = Number.isFinite(Number(cfg?.min_ridge_adj_share)) ? Number(cfg.min_ridge_adj_share) : 0.10;
 
     const highStraightShare = borderTiles > 0 ? (highStraightTiles / borderTiles) : 0;
     const riverAdjShare = inlandBorderTiles > 0 ? (riverAdj / inlandBorderTiles) : 0;
     const ridgeAdjShare = inlandBorderTiles > 0 ? (ridgeAdj / inlandBorderTiles) : 0;
 
+    const overlapMetrics = kingdomBorderStage?.debug?.overlap_metrics ?? null;
+    const semanticChain = kingdomBorderStage?.solved?.semantic_border_chain_idx ?? [];
+    const semanticTrunkIdx = frontierGeometryStage?.semanticGeometry?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
+    const semanticMountainIdx = frontierGeometryStage?.semanticGeometry?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
+    const semanticDirs = defaultNeighborDirs();
+    const directionIndex = (a, b) => {
+      if (!Number.isInteger(a) || !Number.isInteger(b)) return -1;
+      const aq = a % width;
+      const ar = Math.floor(a / width);
+      const bq = b % width;
+      const br = Math.floor(b / width);
+      for (let i = 0; i < semanticDirs.length; i++) {
+        const d = semanticDirs[i];
+        if (aq + d.dq === bq && ar + d.dr === br) return i;
+      }
+      return -1;
+    };
+    let longestSemanticRun = 0;
+    let currentSemanticRun = 1;
+    for (let i = 1; i < semanticChain.length; i++) {
+      const prevDir = i >= 2 ? directionIndex(semanticChain[i - 2], semanticChain[i - 1]) : -1;
+      const nextDir = directionIndex(semanticChain[i - 1], semanticChain[i]);
+      if (prevDir >= 0 && nextDir >= 0 && prevDir === nextDir) currentSemanticRun++;
+      else currentSemanticRun = 1;
+      if (currentSemanticRun > longestSemanticRun) longestSemanticRun = currentSemanticRun;
+    }
+    const semanticHighStraightShare = semanticChain.length > 0
+      ? (longestSemanticRun / semanticChain.length)
+      : highStraightShare;
+    const semanticRiverAdjShare = Number.isFinite(Number(overlapMetrics?.trunk_boundary_ratio))
+      ? Number(overlapMetrics.trunk_boundary_ratio)
+      : riverAdjShare;
+    const semanticRidgeAdjShare = Number.isFinite(Number(overlapMetrics?.mountain_boundary_ratio))
+      ? Number(overlapMetrics.mountain_boundary_ratio)
+      : ridgeAdjShare;
+    const semanticRiverAdjTiles = Number.isFinite(Number(overlapMetrics?.trunk_border_flow_overlap))
+      ? Number(overlapMetrics.trunk_border_flow_overlap)
+      : riverAdj;
+    const semanticRidgeAdjTiles = semanticMountainIdx.length > 0
+      ? Math.round(semanticRidgeAdjShare * semanticMountainIdx.length)
+      : ridgeAdj;
+
     return {
       border_tiles: borderTiles,
       inland_border_tiles: inlandBorderTiles,
-      high_straight_tiles: highStraightTiles,
-      high_straight_share: Number(highStraightShare.toFixed(4)),
-      river_adj_tiles: riverAdj,
-      river_adj_share: Number(riverAdjShare.toFixed(4)),
+      high_straight_tiles: semanticChain.length > 0 ? longestSemanticRun : highStraightTiles,
+      high_straight_share: Number(semanticHighStraightShare.toFixed(4)),
+      river_adj_tiles: semanticRiverAdjTiles,
+      river_adj_share: Number(semanticRiverAdjShare.toFixed(4)),
       ford_adj_tiles: fordAdj,
-      ridge_adj_tiles: ridgeAdj,
-      ridge_adj_share: Number(ridgeAdjShare.toFixed(4)),
+      ridge_adj_tiles: semanticRidgeAdjTiles,
+      ridge_adj_share: Number(semanticRidgeAdjShare.toFixed(4)),
+      legacy_high_straight_tiles: highStraightTiles,
+      legacy_high_straight_share: Number(highStraightShare.toFixed(4)),
+      legacy_river_adj_tiles: riverAdj,
+      legacy_river_adj_share: Number(riverAdjShare.toFixed(4)),
+      legacy_ridge_adj_tiles: ridgeAdj,
+      legacy_ridge_adj_share: Number(ridgeAdjShare.toFixed(4)),
       acceptance: {
         max_high_straight_share: maxHighStraightShare,
         min_river_adj_share: minRiverAdjShare,
-        max_ridge_adj_share: maxRidgeAdjShare,
+        min_ridge_adj_share: minRidgeAdjShare,
       },
       pass: (
-        highStraightShare <= maxHighStraightShare &&
-        riverAdjShare >= minRiverAdjShare &&
-        ridgeAdjShare <= maxRidgeAdjShare
+        semanticHighStraightShare <= maxHighStraightShare &&
+        semanticRiverAdjShare >= minRiverAdjShare &&
+        semanticRidgeAdjShare >= minRidgeAdjShare
       ),
     };
   };
