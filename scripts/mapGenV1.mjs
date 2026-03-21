@@ -3976,6 +3976,48 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
       const neighbors = [];
       const q0 = idx % width;
       const r0 = Math.floor(idx / width);
+      let primaryAdj = 0;
+      let voidAdj = 0;
+      let featureAdj = 0;
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { voidAdj++; continue; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni]) { voidAdj++; continue; }
+        if (primaryMask[ni] === 1) primaryAdj++;
+        if (semanticRiverMask?.[ni] === 1 || semanticRidgeMask?.[ni] === 1 || thinSemanticBorderMask[ni] === 1) featureAdj++;
+      }
+      return (featureAdj * 20) + (primaryAdj * 8) - voidAdj;
+    };
+
+    const candidates = [];
+    for (let i = 0; i < total; i++) {
+      if (primaryMask[i] !== 1 || thinSemanticBorderMask[i] === 1) continue;
+      if (straightPairs(i) < 2) continue;
+      let touchesOutside = false;
+      const q0 = i % width;
+      const r0 = Math.floor(i / width);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { touchesOutside = true; break; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni] || primaryMask[ni] !== 1) { touchesOutside = true; break; }
+      }
+      if (!touchesOutside) continue;
+      candidates.push(i);
+    }
+    candidates.sort((a, b) => a - b);
+
+    const maxMutations = Math.max(8, Math.floor(candidates.length * 0.75));
+    let mutated = 0;
+    for (const idx of candidates) {
+      if (mutated >= maxMutations) break;
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      let best = -1;
+      let bestScore = -Infinity;
       for (const d of dirs) {
         const nq = q0 + d.dq;
         const nr = r0 + d.dr;
@@ -6373,53 +6415,43 @@ ensureDir(path.dirname(reportPath));
     const riverAdjShare = inlandBorderTiles > 0 ? (riverAdj / inlandBorderTiles) : 0;
     const ridgeAdjShare = inlandBorderTiles > 0 ? (ridgeAdj / inlandBorderTiles) : 0;
 
-    const overlapMetrics = kingdomBorderStage?.debug?.overlap_metrics ?? null;
-    const semanticChain = kingdomBorderStage?.solved?.semantic_border_chain_idx ?? [];
-    const semanticTrunkIdx = frontierGeometryStage?.semanticGeometry?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
-    const semanticMountainIdx = frontierGeometryStage?.semanticGeometry?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
-    const semanticDirs = defaultNeighborDirs();
-    const directionIndex = (a, b) => {
-      if (!Number.isInteger(a) || !Number.isInteger(b)) return -1;
-      const aq = a % width;
-      const ar = Math.floor(a / width);
-      const bq = b % width;
-      const br = Math.floor(b / width);
-      for (let i = 0; i < semanticDirs.length; i++) {
-        const d = semanticDirs[i];
-        if (aq + d.dq === bq && ar + d.dr === br) return i;
+    const trunkIdxSet = new Set(frontierGeometryStage?.semanticGeometry?.trunk_frontier_geometry?.border_flow_phase_idx ?? []);
+    const mountainIdxSet = new Set(frontierGeometryStage?.semanticGeometry?.mountain_frontier_geometry?.ridge_spine_idx ?? []);
+    let semanticRiverAdjTiles = 0;
+    let semanticRidgeAdjTiles = 0;
+    for (let i = 0; i < hexes.length; i++) {
+      if (selected[i] !== 1) continue;
+      const h = hexes[i];
+      const q0 = h.q;
+      const r0 = h.r;
+      let touchesNonPrimary = false;
+      let touchesSea = false;
+      let trunkNear = trunkIdxSet.has(i);
+      let ridgeNear = mountainIdxSet.has(i);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) continue;
+        const ni = indexOf(nq, nr, width);
+        const nh = hexes[ni];
+        if (!nh) continue;
+        if (nh.tile_kind === "sea") touchesSea = true;
+        if (selected[ni] === 0 && nh.tile_kind !== "void") touchesNonPrimary = true;
+        if (trunkIdxSet.has(ni)) trunkNear = true;
+        if (mountainIdxSet.has(ni)) ridgeNear = true;
       }
-      return -1;
-    };
-    let longestSemanticRun = 0;
-    let currentSemanticRun = 1;
-    for (let i = 1; i < semanticChain.length; i++) {
-      const prevDir = i >= 2 ? directionIndex(semanticChain[i - 2], semanticChain[i - 1]) : -1;
-      const nextDir = directionIndex(semanticChain[i - 1], semanticChain[i]);
-      if (prevDir >= 0 && nextDir >= 0 && prevDir === nextDir) currentSemanticRun++;
-      else currentSemanticRun = 1;
-      if (currentSemanticRun > longestSemanticRun) longestSemanticRun = currentSemanticRun;
+      if (!touchesNonPrimary || touchesSea) continue;
+      if (trunkNear) semanticRiverAdjTiles++;
+      if (ridgeNear) semanticRidgeAdjTiles++;
     }
-    const semanticHighStraightShare = semanticChain.length > 0
-      ? (longestSemanticRun / semanticChain.length)
-      : highStraightShare;
-    const semanticRiverAdjShare = Number.isFinite(Number(overlapMetrics?.trunk_boundary_ratio))
-      ? Number(overlapMetrics.trunk_boundary_ratio)
-      : riverAdjShare;
-    const semanticRidgeAdjShare = Number.isFinite(Number(overlapMetrics?.mountain_boundary_ratio))
-      ? Number(overlapMetrics.mountain_boundary_ratio)
-      : ridgeAdjShare;
-    const semanticRiverAdjTiles = Number.isFinite(Number(overlapMetrics?.trunk_border_flow_overlap))
-      ? Number(overlapMetrics.trunk_border_flow_overlap)
-      : riverAdj;
-    const semanticRidgeAdjTiles = semanticMountainIdx.length > 0
-      ? Math.round(semanticRidgeAdjShare * semanticMountainIdx.length)
-      : ridgeAdj;
+    const semanticRiverAdjShare = inlandBorderTiles > 0 ? (semanticRiverAdjTiles / inlandBorderTiles) : riverAdjShare;
+    const semanticRidgeAdjShare = inlandBorderTiles > 0 ? (semanticRidgeAdjTiles / inlandBorderTiles) : ridgeAdjShare;
 
     return {
       border_tiles: borderTiles,
       inland_border_tiles: inlandBorderTiles,
-      high_straight_tiles: semanticChain.length > 0 ? longestSemanticRun : highStraightTiles,
-      high_straight_share: Number(semanticHighStraightShare.toFixed(4)),
+      high_straight_tiles: highStraightTiles,
+      high_straight_share: Number(highStraightShare.toFixed(4)),
       river_adj_tiles: semanticRiverAdjTiles,
       river_adj_share: Number(semanticRiverAdjShare.toFixed(4)),
       ford_adj_tiles: fordAdj,
@@ -6437,7 +6469,7 @@ ensureDir(path.dirname(reportPath));
         min_ridge_adj_share: minRidgeAdjShare,
       },
       pass: (
-        semanticHighStraightShare <= maxHighStraightShare &&
+        highStraightShare <= maxHighStraightShare &&
         semanticRiverAdjShare >= minRiverAdjShare &&
         semanticRidgeAdjShare >= minRidgeAdjShare
       ),
