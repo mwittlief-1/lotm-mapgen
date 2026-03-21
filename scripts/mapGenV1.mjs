@@ -3976,6 +3976,48 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
       const neighbors = [];
       const q0 = idx % width;
       const r0 = Math.floor(idx / width);
+      let primaryAdj = 0;
+      let voidAdj = 0;
+      let featureAdj = 0;
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { voidAdj++; continue; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni]) { voidAdj++; continue; }
+        if (primaryMask[ni] === 1) primaryAdj++;
+        if (semanticRiverMask?.[ni] === 1 || semanticRidgeMask?.[ni] === 1 || thinSemanticBorderMask[ni] === 1) featureAdj++;
+      }
+      return (featureAdj * 20) + (primaryAdj * 8) - voidAdj;
+    };
+
+    const candidates = [];
+    for (let i = 0; i < total; i++) {
+      if (primaryMask[i] !== 1 || thinSemanticBorderMask[i] === 1) continue;
+      if (straightPairs(i) < 2) continue;
+      let touchesOutside = false;
+      const q0 = i % width;
+      const r0 = Math.floor(i / width);
+      for (const d of dirs) {
+        const nq = q0 + d.dq;
+        const nr = r0 + d.dr;
+        if (!inBounds(nq, nr, width, height)) { touchesOutside = true; break; }
+        const ni = indexOf(nq, nr, width);
+        if (!inWorld[ni] || primaryMask[ni] !== 1) { touchesOutside = true; break; }
+      }
+      if (!touchesOutside) continue;
+      candidates.push(i);
+    }
+    candidates.sort((a, b) => a - b);
+
+    const maxMutations = Math.max(8, Math.floor(candidates.length * 0.75));
+    let mutated = 0;
+    for (const idx of candidates) {
+      if (mutated >= maxMutations) break;
+      const q0 = idx % width;
+      const r0 = Math.floor(idx / width);
+      let best = -1;
+      let bestScore = -Infinity;
       for (const d of dirs) {
         const nq = q0 + d.dq;
         const nr = r0 + d.dr;
