@@ -4314,6 +4314,77 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
   let trunkOnBorder = 0;
   for (const idx of trunkIdx) if (borderMask[idx] === 1) trunkOnBorder++;
 
+  const nearBoundaryRatio = (idxList, maxDist = 1) => {
+    const arr = Array.isArray(idxList) ? idxList : [];
+    if (arr.length === 0) return 0;
+    let eligible = 0;
+    let hit = 0;
+    for (const idx of arr) {
+      if (!Number.isInteger(idx) || idx < 0 || idx >= total) continue;
+      if (landMask[idx] !== 1) continue;
+      eligible++;
+      const d = distToPoliticalBorder[idx];
+      if (d >= 0 && d <= maxDist) hit++;
+    }
+    return eligible > 0 ? (hit / eligible) : 0;
+  };
+
+  const trunkIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
+  const mountainIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
+  const freshwaterIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
+  const minRequiredTrunkTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_trunk_segment_tiles ?? 12)));
+  const minRequiredMountainTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_mountain_segment_tiles ?? 12)));
+  const minRequiredFreshwaterTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_freshwater_segment_tiles ?? 8)));
+  const trunkEligibleTiles = trunkIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  const mountainEligibleTiles = mountainIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  const freshwaterEligibleTiles = freshwaterIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
+  assert(
+    trunkEligibleTiles >= minRequiredTrunkTiles &&
+    mountainEligibleTiles >= minRequiredMountainTiles &&
+    freshwaterEligibleTiles >= minRequiredFreshwaterTiles,
+    `required frontier segment materialization failed (trunk=${trunkEligibleTiles}>=${minRequiredTrunkTiles}, mountain=${mountainEligibleTiles}>=${minRequiredMountainTiles}, freshwater=${freshwaterEligibleTiles}>=${minRequiredFreshwaterTiles})`
+  );
+  const trunkBoundaryRatio = nearBoundaryRatio(trunkIdx, 1);
+  const mountainBoundaryRatio = nearBoundaryRatio(mountainIdx, 1);
+  const freshwaterBoundaryRatio = nearBoundaryRatio(freshwaterIdx, 1);
+  const maxOrbitGap = Math.max(0, Math.floor(Number(config?.mapgen?.frontier?.max_trunk_orbit_gap ?? 2)));
+  const minOrbitContiguous = Math.max(1, Math.floor(Number(config?.mapgen?.frontier?.min_trunk_orbit_contiguous_len ?? 8)));
+  let trunkOrbitRun = 0;
+  let trunkOrbitMaxRun = 0;
+  let trunkOrbitTiles = 0;
+  for (const idx of trunkIdx) {
+    const d = (idx >= 0 && idx < total) ? distToPoliticalBorder[idx] : -1;
+    const orbiting = d > maxOrbitGap;
+    if (orbiting) {
+      trunkOrbitTiles++;
+      trunkOrbitRun++;
+      if (trunkOrbitRun > trunkOrbitMaxRun) trunkOrbitMaxRun = trunkOrbitRun;
+    } else {
+      trunkOrbitRun = 0;
+    }
+  }
+  const trunkOrbitRatio = trunkIdx.length > 0 ? (trunkOrbitTiles / trunkIdx.length) : 0;
+  const minTrunkRatio = Number(config?.mapgen?.frontier?.min_trunk_boundary_overlap_ratio ?? 0.55);
+  const minMountainRatio = Number(config?.mapgen?.frontier?.min_mountain_boundary_overlap_ratio ?? 0.45);
+  const minFreshwaterRatio = Number(config?.mapgen?.frontier?.min_freshwater_boundary_overlap_ratio ?? 0.35);
+  const overlapContractPass =
+    trunkBoundaryRatio >= minTrunkRatio &&
+    mountainBoundaryRatio >= minMountainRatio &&
+    freshwaterBoundaryRatio >= minFreshwaterRatio;
+  const orbitContractPass = trunkOrbitMaxRun < minOrbitContiguous;
+  assert(
+    overlapContractPass,
+    `border overlap contract failed (trunk=${trunkBoundaryRatio.toFixed(3)}>=${minTrunkRatio}, mountain=${mountainBoundaryRatio.toFixed(3)}>=${minMountainRatio}, freshwater=${freshwaterBoundaryRatio.toFixed(3)}>=${minFreshwaterRatio})`
+  );
+  assert(
+    orbitContractPass,
+    `trunk orbit contract failed (max_gap=${maxOrbitGap}, longest_orbit_run=${trunkOrbitMaxRun}, min_for_fail=${minOrbitContiguous}, orbit_ratio=${trunkOrbitRatio.toFixed(3)})`
+  );
+
+  // ensure trunk border collision metric
+  let trunkOnBorder = 0;
+  for (const idx of trunkIdx) if (borderMask[idx] === 1) trunkOnBorder++;
+
   return {
     stage: 'solveKingdomBorderV2',
     delegate: 'semantic_border_solver_v3_scaffold_first',
