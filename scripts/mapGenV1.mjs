@@ -45,6 +45,12 @@ import {
 } from "./countyV2PQ.mjs";
 import { parseMacroStyleFromSeed, generateMacroDividerCostV1 } from "./macroSkeletonV1.mjs";
 import { paintTerrainHydrologyV1 } from "./terrainHydrologyV1.mjs";
+import {
+  computeInlandBoundaryFeatureAdjacency,
+  computeNearBoundaryRatio,
+  collectRoughenCandidates,
+  isProjectedRunInBand
+} from "./mapGenHelpersV1.mjs";
 
 function hexId(i) {
   return `hx_${i}`;
@@ -3442,7 +3448,6 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
     return { trunkApproach, trunkBorderFlow, trunkInteriorTurnCorridor, mountainRidgeSpine, freshwaterChain, softClosure };
   };
 
-  const inBand = (v) => v >= 40 && v <= 80;
   let chosenGeom = null;
   let chosenAttempt = 0;
   let bestScore = -1e18;
@@ -3453,9 +3458,9 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
     const mountainProjectedRunTry = projectedRunAlongPlane({ world, idxPath: candidate.mountainRidgeSpine, width, plane: edgeAssignments?.[chosen.mountain_edge] });
     const freshwaterProjectedRunTry = projectedRunAlongPlane({ world, idxPath: candidate.freshwaterChain, width, plane: edgeAssignments?.[chosen.freshwater_edge] });
     const score =
-      (inBand(trunkProjectedRunTry) ? 1000 : -Math.abs(60 - trunkProjectedRunTry)) +
-      (inBand(mountainProjectedRunTry) ? 1000 : -Math.abs(60 - mountainProjectedRunTry)) +
-      (inBand(freshwaterProjectedRunTry) ? 1000 : -Math.abs(60 - freshwaterProjectedRunTry)) +
+      (isProjectedRunInBand(trunkProjectedRunTry) ? 1000 : -Math.abs(60 - trunkProjectedRunTry)) +
+      (isProjectedRunInBand(mountainProjectedRunTry) ? 1000 : -Math.abs(60 - mountainProjectedRunTry)) +
+      (isProjectedRunInBand(freshwaterProjectedRunTry) ? 1000 : -Math.abs(60 - freshwaterProjectedRunTry)) +
       (candidate.trunkBorderFlow.length * 0.2) +
       (candidate.mountainRidgeSpine.length * 0.15);
     if (score > bestScore) {
@@ -3463,7 +3468,7 @@ function buildFrontierGeometryV2({ width, height, inWorld, tile_kind, world, oce
       chosenGeom = candidate;
       chosenAttempt = attempt;
     }
-    if (inBand(trunkProjectedRunTry) && inBand(mountainProjectedRunTry) && inBand(freshwaterProjectedRunTry)) break;
+    if (isProjectedRunInBand(trunkProjectedRunTry) && isProjectedRunInBand(mountainProjectedRunTry) && isProjectedRunInBand(freshwaterProjectedRunTry)) break;
   }
   const {
     trunkApproach,
@@ -4023,24 +4028,15 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
       return (featureAdj * 20) + (primaryAdj * 8) - voidAdj;
     };
 
-    const roughenCandidates = [];
-    for (let i = 0; i < total; i++) {
-      if (primaryMask[i] !== 1 || thinSemanticBorderMask[i] === 1) continue;
-      if (straightPairs(i) < 2) continue;
-      let touchesOutside = false;
-      const q0 = i % width;
-      const r0 = Math.floor(i / width);
-      for (const d of dirs) {
-        const nq = q0 + d.dq;
-        const nr = r0 + d.dr;
-        if (!inBounds(nq, nr, width, height)) { touchesOutside = true; break; }
-        const ni = indexOf(nq, nr, width);
-        if (!inWorld[ni] || primaryMask[ni] !== 1) { touchesOutside = true; break; }
-      }
-      if (!touchesOutside) continue;
-      roughenCandidates.push(i);
-    }
-    roughenCandidates.sort((a, b) => a - b);
+    const roughenCandidates = collectRoughenCandidates({
+      total,
+      width,
+      height,
+      primaryMask,
+      excludedMask: thinSemanticBorderMask,
+      inWorld,
+      straightPairs
+    });
 
     const maxMutations = Math.max(8, Math.floor(roughenCandidates.length * 0.75));
     let mutated = 0;
@@ -4243,21 +4239,6 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
     }
   }
 
-  const nearBoundaryRatio = (idxList, maxDist = 1) => {
-    const arr = Array.isArray(idxList) ? idxList : [];
-    if (arr.length === 0) return 0;
-    let eligible = 0;
-    let hit = 0;
-    for (const idx of arr) {
-      if (!Number.isInteger(idx) || idx < 0 || idx >= total) continue;
-      if (landMask[idx] !== 1) continue;
-      eligible++;
-      const d = distToPoliticalBorder[idx];
-      if (d >= 0 && d <= maxDist) hit++;
-    }
-    return eligible > 0 ? (hit / eligible) : 0;
-  };
-
   const trunkIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
   const mountainIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
   const freshwaterIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
@@ -4273,80 +4254,9 @@ function solveKingdomBorderV2({ width, height, inWorld, tile_kind, world, ocean,
     freshwaterEligibleTiles >= minRequiredFreshwaterTiles,
     `required frontier segment materialization failed (trunk=${trunkEligibleTiles}>=${minRequiredTrunkTiles}, mountain=${mountainEligibleTiles}>=${minRequiredMountainTiles}, freshwater=${freshwaterEligibleTiles}>=${minRequiredFreshwaterTiles})`
   );
-  const trunkBoundaryRatio = nearBoundaryRatio(trunkIdx, 1);
-  const mountainBoundaryRatio = nearBoundaryRatio(mountainIdx, 1);
-  const freshwaterBoundaryRatio = nearBoundaryRatio(freshwaterIdx, 1);
-  const maxOrbitGap = Math.max(0, Math.floor(Number(config?.mapgen?.frontier?.max_trunk_orbit_gap ?? 2)));
-  const minOrbitContiguous = Math.max(1, Math.floor(Number(config?.mapgen?.frontier?.min_trunk_orbit_contiguous_len ?? 8)));
-  let trunkOrbitRun = 0;
-  let trunkOrbitMaxRun = 0;
-  let trunkOrbitTiles = 0;
-  for (const idx of trunkIdx) {
-    const d = (idx >= 0 && idx < total) ? distToPoliticalBorder[idx] : -1;
-    const orbiting = d > maxOrbitGap;
-    if (orbiting) {
-      trunkOrbitTiles++;
-      trunkOrbitRun++;
-      if (trunkOrbitRun > trunkOrbitMaxRun) trunkOrbitMaxRun = trunkOrbitRun;
-    } else {
-      trunkOrbitRun = 0;
-    }
-  }
-  const trunkOrbitRatio = trunkIdx.length > 0 ? (trunkOrbitTiles / trunkIdx.length) : 0;
-  const minTrunkRatio = Number(config?.mapgen?.frontier?.min_trunk_boundary_overlap_ratio ?? 0.55);
-  const minMountainRatio = Number(config?.mapgen?.frontier?.min_mountain_boundary_overlap_ratio ?? 0.45);
-  const minFreshwaterRatio = Number(config?.mapgen?.frontier?.min_freshwater_boundary_overlap_ratio ?? 0.35);
-  const overlapContractPass =
-    trunkBoundaryRatio >= minTrunkRatio &&
-    mountainBoundaryRatio >= minMountainRatio &&
-    freshwaterBoundaryRatio >= minFreshwaterRatio;
-  const orbitContractPass = trunkOrbitMaxRun < minOrbitContiguous;
-  assert(
-    overlapContractPass,
-    `border overlap contract failed (trunk=${trunkBoundaryRatio.toFixed(3)}>=${minTrunkRatio}, mountain=${mountainBoundaryRatio.toFixed(3)}>=${minMountainRatio}, freshwater=${freshwaterBoundaryRatio.toFixed(3)}>=${minFreshwaterRatio})`
-  );
-  assert(
-    orbitContractPass,
-    `trunk orbit contract failed (max_gap=${maxOrbitGap}, longest_orbit_run=${trunkOrbitMaxRun}, min_for_fail=${minOrbitContiguous}, orbit_ratio=${trunkOrbitRatio.toFixed(3)})`
-  );
-
-  // ensure trunk border collision metric
-  let trunkOnBorder = 0;
-  for (const idx of trunkIdx) if (borderMask[idx] === 1) trunkOnBorder++;
-
-  const nearBoundaryRatio = (idxList, maxDist = 1) => {
-    const arr = Array.isArray(idxList) ? idxList : [];
-    if (arr.length === 0) return 0;
-    let eligible = 0;
-    let hit = 0;
-    for (const idx of arr) {
-      if (!Number.isInteger(idx) || idx < 0 || idx >= total) continue;
-      if (landMask[idx] !== 1) continue;
-      eligible++;
-      const d = distToPoliticalBorder[idx];
-      if (d >= 0 && d <= maxDist) hit++;
-    }
-    return eligible > 0 ? (hit / eligible) : 0;
-  };
-
-  const trunkIdx = semantic?.trunk_frontier_geometry?.border_flow_phase_idx ?? [];
-  const mountainIdx = semantic?.mountain_frontier_geometry?.ridge_spine_idx ?? [];
-  const freshwaterIdx = semantic?.freshwater_frontier_geometry?.chain_idx ?? [];
-  const minRequiredTrunkTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_trunk_segment_tiles ?? 12)));
-  const minRequiredMountainTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_mountain_segment_tiles ?? 12)));
-  const minRequiredFreshwaterTiles = Math.max(4, Math.floor(Number(config?.mapgen?.frontier?.min_required_freshwater_segment_tiles ?? 8)));
-  const trunkEligibleTiles = trunkIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
-  const mountainEligibleTiles = mountainIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
-  const freshwaterEligibleTiles = freshwaterIdx.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total && landMask[idx] === 1).length;
-  assert(
-    trunkEligibleTiles >= minRequiredTrunkTiles &&
-    mountainEligibleTiles >= minRequiredMountainTiles &&
-    freshwaterEligibleTiles >= minRequiredFreshwaterTiles,
-    `required frontier segment materialization failed (trunk=${trunkEligibleTiles}>=${minRequiredTrunkTiles}, mountain=${mountainEligibleTiles}>=${minRequiredMountainTiles}, freshwater=${freshwaterEligibleTiles}>=${minRequiredFreshwaterTiles})`
-  );
-  const trunkBoundaryRatio = nearBoundaryRatio(trunkIdx, 1);
-  const mountainBoundaryRatio = nearBoundaryRatio(mountainIdx, 1);
-  const freshwaterBoundaryRatio = nearBoundaryRatio(freshwaterIdx, 1);
+  const trunkBoundaryRatio = computeNearBoundaryRatio({ idxList: trunkIdx, maxDist: 1, total, landMask, distToPoliticalBorder });
+  const mountainBoundaryRatio = computeNearBoundaryRatio({ idxList: mountainIdx, maxDist: 1, total, landMask, distToPoliticalBorder });
+  const freshwaterBoundaryRatio = computeNearBoundaryRatio({ idxList: freshwaterIdx, maxDist: 1, total, landMask, distToPoliticalBorder });
   const maxOrbitGap = Math.max(0, Math.floor(Number(config?.mapgen?.frontier?.max_trunk_orbit_gap ?? 2)));
   const minOrbitContiguous = Math.max(1, Math.floor(Number(config?.mapgen?.frontier?.min_trunk_orbit_contiguous_len ?? 8)));
   let trunkOrbitRun = 0;
@@ -6446,33 +6356,13 @@ ensureDir(path.dirname(reportPath));
 
     const trunkIdxSet = new Set(frontierGeometryStage?.semanticGeometry?.trunk_frontier_geometry?.border_flow_phase_idx ?? []);
     const mountainIdxSet = new Set(frontierGeometryStage?.semanticGeometry?.mountain_frontier_geometry?.ridge_spine_idx ?? []);
-    let semanticRiverAdjTiles = 0;
-    let semanticRidgeAdjTiles = 0;
-    for (let i = 0; i < hexes.length; i++) {
-      if (selected[i] !== 1) continue;
-      const h = hexes[i];
-      const q0 = h.q;
-      const r0 = h.r;
-      let touchesNonPrimary = false;
-      let touchesSea = false;
-      let trunkNear = trunkIdxSet.has(i);
-      let ridgeNear = mountainIdxSet.has(i);
-      for (const d of dirs) {
-        const nq = q0 + d.dq;
-        const nr = r0 + d.dr;
-        if (!inBounds(nq, nr, width, height)) continue;
-        const ni = indexOf(nq, nr, width);
-        const nh = hexes[ni];
-        if (!nh) continue;
-        if (nh.tile_kind === "sea") touchesSea = true;
-        if (selected[ni] === 0 && nh.tile_kind !== "void") touchesNonPrimary = true;
-        if (trunkIdxSet.has(ni)) trunkNear = true;
-        if (mountainIdxSet.has(ni)) ridgeNear = true;
-      }
-      if (!touchesNonPrimary || touchesSea) continue;
-      if (trunkNear) semanticRiverAdjTiles++;
-      if (ridgeNear) semanticRidgeAdjTiles++;
-    }
+    const { riverAdjTiles: semanticRiverAdjTiles, ridgeAdjTiles: semanticRidgeAdjTiles } = computeInlandBoundaryFeatureAdjacency({
+      hexes,
+      selected,
+      width,
+      trunkIdxSet,
+      mountainIdxSet
+    });
     const semanticRiverAdjShare = inlandBorderTiles > 0 ? (semanticRiverAdjTiles / inlandBorderTiles) : riverAdjShare;
     const semanticRidgeAdjShare = inlandBorderTiles > 0 ? (semanticRidgeAdjTiles / inlandBorderTiles) : ridgeAdjShare;
 
