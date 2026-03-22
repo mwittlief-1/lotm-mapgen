@@ -110,6 +110,8 @@ const summary = {
   non_fail_hard: nonFailHard,
   seeds: []
 };
+let fatalBuildError = false;
+const fatalMessages = [];
 
 for (const seed of seeds) {
   const seedDir = path.join(outRoot, seed);
@@ -142,6 +144,9 @@ for (const seed of seeds) {
       `--metricsOut=${metricsOut}`,
       `--reportOut=${reportOut}`
     ]);
+  } else {
+    fatalBuildError = true;
+    fatalMessages.push(`${seed}: map generation failed`);
   }
 
   try {
@@ -312,6 +317,10 @@ summary.failed_seed_count = summary.seeds.length - summary.success_count;
 summary.meets_min_success = summary.success_count >= minSuccess;
 
 writeJson(path.join(outRoot, "seed_batch_summary.json"), summary);
+
+if (fatalBuildError) {
+  throw new Error(`map:batch failed before gallery generation:\n${fatalMessages.join("\n")}`);
+}
 
 // Optional gallery
 const html = [
