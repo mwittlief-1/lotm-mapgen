@@ -94,6 +94,7 @@ for (const seed of seeds) {
   let metrics = null;
   let borderQuality = null;
   let genReport = null;
+  let failureReason = null;
 
   if (genOk) {
     validateOk = runNodeScript("mapValidateV1.mjs", [
@@ -114,14 +115,19 @@ for (const seed of seeds) {
     if (fs.existsSync(genReportPath)) {
       genReport = JSON.parse(fs.readFileSync(genReportPath, "utf8"));
       borderQuality = genReport?.border_quality ?? null;
+      failureReason = genReport?.error?.message ?? genReport?.failure?.message ?? failureReason;
     }
   } catch {}
   try {
     if (fs.existsSync(reportOut)) {
       const rep = JSON.parse(fs.readFileSync(reportOut, "utf8"));
       warnings = rep?.warnings ?? [];
+      if (!validateOk && Array.isArray(warnings) && warnings.length > 0) {
+        failureReason = warnings.map((w) => w?.message ?? JSON.stringify(w)).join("; ");
+      }
     }
   } catch {}
+  if (!genOk && !failureReason) failureReason = "map generation failed";
 
   // Layer outputs (transparent backgrounds; intended to be stacked/toggled in gallery).
   const thumbPng = path.join(seedDir, "preview_thumb.png");
@@ -214,10 +220,7 @@ for (const seed of seeds) {
     layerSeatsPng
   ];
   const missingArtifacts = requiredArtifacts.filter((p) => !fs.existsSync(p));
-  if (missingArtifacts.length > 0) {
-    fatalBuildError = true;
-    fatalMessages.push(`${seed}: missing required artifacts (${missingArtifacts.map((p) => path.basename(p)).join(", ")})`);
-  }
+  if (missingArtifacts.length > 0 && !failureReason) failureReason = `missing required artifacts (${missingArtifacts.map((p) => path.basename(p)).join(", ")})`;
 
   summary.seeds.push({
     seed,
@@ -261,9 +264,15 @@ for (const seed of seeds) {
     gen_pass: genOk,
     validate_pass: validateOk,
     missing_output: missingOutput,
+    missing_artifacts: missingArtifacts.map((p) => path.basename(p)),
+    failure_reason: failureReason,
     warnings
   });
 }
+
+summary.success_count = summary.seeds.filter((s) => s.validate_pass === true && s.missing_output !== true).length;
+summary.generation_success_count = summary.seeds.filter((s) => s.gen_pass === true).length;
+summary.failed_seed_count = summary.seeds.length - summary.success_count;
 
 writeJson(path.join(outRoot, "seed_batch_summary.json"), summary);
 
@@ -310,6 +319,9 @@ for (const s of summary.seeds) {
   html.push(`<img data-layer='macro' style='display:none' src='${rel(s.paths.layer_macro_png)}' alt='macro'>`);
   html.push("</div>");
   html.push(`<div class='meta'>gen_pass: ${s.gen_pass}\nvalidate_pass: ${s.validate_pass}\nmissing_output: ${s.missing_output}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}\nborder_quality_pass: ${s.metrics.border_quality_pass}\nborder_high_straight_share: ${s.metrics.border_high_straight_share}\nborder_river_adj_share: ${s.metrics.border_river_adj_share}\nborder_ridge_adj_share: ${s.metrics.border_ridge_adj_share}</div>`);
+  if (s.failure_reason) {
+    html.push(`<div class='meta'>failure_reason:\n${s.failure_reason}</div>`);
+  }
   if (Array.isArray(s.warnings) && s.warnings.length) {
     html.push(`<div class='meta'>warnings:\n${s.warnings.map(w=>w.message ?? JSON.stringify(w)).join("\n")}</div>`);
   }
