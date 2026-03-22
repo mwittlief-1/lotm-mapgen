@@ -84,6 +84,8 @@ const minSuccess = parsePositiveInt(args.minSuccess ?? process.env.MIN_SUCCESS ?
 const nonFailHard = parseBool(args.nonFailHard ?? process.env.MAP_BATCH_NON_FAILHARD, false);
 const syntaxPreflight = parseBool(args.syntaxPreflight ?? process.env.MAP_BATCH_SYNTAX_PREFLIGHT, false);
 
+console.log(`map:batch config — minSuccess=${minSuccess} nonFailHard=${nonFailHard} syntaxPreflight=${syntaxPreflight}`);
+
 if (syntaxPreflight) {
   assert(runSyntaxPreflight(), "map:batch syntax preflight failed");
 }

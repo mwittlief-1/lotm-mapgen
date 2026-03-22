@@ -11,6 +11,7 @@ const QA_RUNS = path.join(ROOT, "qa_runs");
 const SEED_BATCH = path.join(QA_RUNS, "map_seed_batch");
 const DIST = path.join(ROOT, "dist");
 const MIN_SUCCESS = Number.parseInt(process.env.MIN_SUCCESS ?? process.env.VERCEL_MIN_SUCCESS ?? "3", 10) || 3;
+const DEPLOY_SHA = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown";
 
 function run(cmd, args, options = {}) {
   const r = spawnSync(cmd, args, {
@@ -61,6 +62,7 @@ function buildSeedRow(seed) {
 }
 
 async function main() {
+  console.log(`map:publish config — commit=${DEPLOY_SHA} minSuccess=${MIN_SUCCESS}`);
   // 1) Generate the seed batch in thresholded non-failhard mode for deploys.
   // Default deploy threshold is lower than the batch script default so Vercel can publish the current deterministic seed pack unless overridden by env.
   run(
