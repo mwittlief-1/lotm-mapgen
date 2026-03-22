@@ -19,6 +19,7 @@
     "map:review": "node scripts/mapReviewV1.mjs",
     "map:gallery": "node scripts/mapBatchV1.mjs",
     "map:validate": "node scripts/mapValidateV1.mjs",
+    "map:syntax": "node --check scripts/mapGenV1.mjs && node --check scripts/mapBatchV1.mjs && node --check scripts/mapPublishVercel.mjs",
     "assets:validate": "node scripts/assetsValidateV1.mjs",
     "boundary:check": "node scripts/boundaryCheck.mjs",
     "map:publish": "node scripts/mapPublishV1.mjs",
