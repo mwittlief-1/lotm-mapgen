@@ -20,6 +20,20 @@ function nowUtcIso() {
   return new Date().toISOString();
 }
 
+function parseBool(value, fallback = false) {
+  if (value == null) return fallback;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return fallback;
+}
+
+function parsePositiveInt(value, fallback) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
 function writeLayerPng({ map, ctx, layer, outPath, overlay }) {
   const rgba = renderLayer({ map, ctx, layer, overlay });
   ensureDir(path.dirname(outPath));
@@ -39,17 +53,40 @@ function writePlaceholderPng({ outPath, width = 48, height = 48, rgbaColor = [25
   writePngRGBA({ filepath: outPath, width, height, rgba });
 }
 
-function runNodeScript(scriptRel, args) {
+function runNodeScript(scriptRel, args, options = {}) {
   const node = process.execPath;
   const script = path.resolve("scripts", scriptRel);
-  const res = spawnSync(node, [script, ...args], { stdio: "inherit" });
+  const res = spawnSync(node, [script, ...args], {
+    stdio: "inherit",
+    env: { ...process.env, ...(options.env ?? {}) }
+  });
   return res.status === 0;
+}
+
+function runSyntaxPreflight() {
+  const scriptsToCheck = [
+    "scripts/mapGenV1.mjs",
+    "scripts/mapBatchV1.mjs",
+    "scripts/mapValidateV1.mjs"
+  ];
+  for (const script of scriptsToCheck) {
+    const res = spawnSync(process.execPath, ["--check", path.resolve(script)], { stdio: "inherit" });
+    if (res.status !== 0) return false;
+  }
+  return true;
 }
 
 const args = parseArgs(process.argv.slice(2));
 const configPath = String(args.config ?? "data/map/map_v1_config.json");
 const seedsFile = String(args.seeds ?? "qa_artifacts/map_seed_batch/seeds_styles_ABC_v0_1.json");
 const outRoot = String(args.out ?? "qa_runs/map_seed_batch");
+const minSuccess = parsePositiveInt(args.minSuccess ?? process.env.MIN_SUCCESS ?? process.env.MAP_BATCH_MIN_SUCCESS, 8);
+const nonFailHard = parseBool(args.nonFailHard ?? process.env.MAP_BATCH_NON_FAILHARD, false);
+const syntaxPreflight = parseBool(args.syntaxPreflight ?? process.env.MAP_BATCH_SYNTAX_PREFLIGHT, false);
+
+if (syntaxPreflight) {
+  assert(runSyntaxPreflight(), "map:batch syntax preflight failed");
+}
 
 assert(fs.existsSync(configPath), `config not found: ${configPath}`);
 assert(fs.existsSync(seedsFile), `seeds file not found: ${seedsFile}`);
@@ -67,6 +104,8 @@ const summary = {
   config_path: configPath,
   seeds_file: seedsFile,
   generated_at_utc: nowUtcIso(),
+  min_success_required: minSuccess,
+  non_fail_hard: nonFailHard,
   seeds: []
 };
 let fatalBuildError = false;
@@ -273,6 +312,7 @@ for (const seed of seeds) {
 summary.success_count = summary.seeds.filter((s) => s.validate_pass === true && s.missing_output !== true).length;
 summary.generation_success_count = summary.seeds.filter((s) => s.gen_pass === true).length;
 summary.failed_seed_count = summary.seeds.length - summary.success_count;
+summary.meets_min_success = summary.success_count >= minSuccess;
 
 writeJson(path.join(outRoot, "seed_batch_summary.json"), summary);
 
@@ -288,6 +328,7 @@ const html = [
   "</head><body>",
   "<h1>Map v1 Seed Batch</h1>",
   `<p>Generated at ${summary.generated_at_utc}</p>`,
+  `<p>Successful validated seeds: ${summary.success_count}/${summary.seeds.length} (minimum required: ${summary.min_success_required})</p>`,
   "<div class='controls'>",
   "<strong>Layers:</strong> ",
   "<label><input type='checkbox' data-layer='mask' checked> Mask</label>",
@@ -319,11 +360,14 @@ for (const s of summary.seeds) {
   html.push(`<img data-layer='macro' style='display:none' src='${rel(s.paths.layer_macro_png)}' alt='macro'>`);
   html.push("</div>");
   html.push(`<div class='meta'>gen_pass: ${s.gen_pass}\nvalidate_pass: ${s.validate_pass}\nmissing_output: ${s.missing_output}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}\nborder_quality_pass: ${s.metrics.border_quality_pass}\nborder_high_straight_share: ${s.metrics.border_high_straight_share}\nborder_river_adj_share: ${s.metrics.border_river_adj_share}\nborder_ridge_adj_share: ${s.metrics.border_ridge_adj_share}</div>`);
+  if (Array.isArray(s.missing_artifacts) && s.missing_artifacts.length) {
+    html.push(`<div class='meta'>missing_artifacts:\n${s.missing_artifacts.join("\n")}</div>`);
+  }
   if (s.failure_reason) {
     html.push(`<div class='meta'>failure_reason:\n${s.failure_reason}</div>`);
   }
   if (Array.isArray(s.warnings) && s.warnings.length) {
-    html.push(`<div class='meta'>warnings:\n${s.warnings.map(w=>w.message ?? JSON.stringify(w)).join("\n")}</div>`);
+    html.push(`<div class='meta'>warnings:\n${s.warnings.map((w) => w.message ?? JSON.stringify(w)).join("\n")}</div>`);
   }
   html.push("</div>");
 }
@@ -351,4 +395,13 @@ html.push("</body></html>");
 
 fs.writeFileSync(path.join(outRoot, "seed_gallery.html"), html.join("\n"));
 
-console.log(`map:batch OK — wrote ${summary.seeds.length} seeds to ${outRoot}`);
+console.log(`map:batch wrote ${summary.seeds.length} seeds to ${outRoot} (${summary.success_count} validated successes, min required ${minSuccess})`);
+
+if (!summary.meets_min_success) {
+  console.error(`map:batch insufficient validated seeds: ${summary.success_count} < ${minSuccess}`);
+  process.exit(1);
+}
+
+if (!nonFailHard && summary.failed_seed_count > 0) {
+  console.warn(`map:batch completed with ${summary.failed_seed_count} per-seed failures; continuing because minimum success threshold was met.`);
+}
