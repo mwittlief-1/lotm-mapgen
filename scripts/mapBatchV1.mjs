@@ -26,6 +26,19 @@ function writeLayerPng({ map, ctx, layer, outPath, overlay }) {
   writePngRGBA({ filepath: outPath, width: ctx.w, height: ctx.h, rgba });
 }
 
+function writePlaceholderPng({ outPath, width = 48, height = 48, rgbaColor = [255, 220, 220, 255] }) {
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    const off = i * 4;
+    rgba[off + 0] = rgbaColor[0];
+    rgba[off + 1] = rgbaColor[1];
+    rgba[off + 2] = rgbaColor[2];
+    rgba[off + 3] = rgbaColor[3];
+  }
+  ensureDir(path.dirname(outPath));
+  writePngRGBA({ filepath: outPath, width, height, rgba });
+}
+
 function runNodeScript(scriptRel, args) {
   const node = process.execPath;
   const script = path.resolve("scripts", scriptRel);
@@ -63,6 +76,7 @@ for (const seed of seeds) {
   const mapOut = path.join(seedDir, "map_v1.json");
   const metricsOut = path.join(seedDir, "mapgen_metrics.json");
   const reportOut = path.join(seedDir, "map_validate_report.json");
+  const genReportPath = path.join(seedDir, "mapgen_report.json");
 
   const genOk = runNodeScript("mapGenV1.mjs", [
     `--seed=${seed}`,
@@ -77,6 +91,8 @@ for (const seed of seeds) {
   let warnings = [];
   let metrics = null;
   let borderQuality = null;
+  let genReport = null;
+  let failureReason = null;
 
   if (genOk) {
     validateOk = runNodeScript("mapValidateV1.mjs", [
@@ -91,11 +107,22 @@ for (const seed of seeds) {
     if (fs.existsSync(metricsOut)) metrics = JSON.parse(fs.readFileSync(metricsOut, "utf8"));
   } catch {}
   try {
+    if (fs.existsSync(genReportPath)) {
+      genReport = JSON.parse(fs.readFileSync(genReportPath, "utf8"));
+      borderQuality = genReport?.border_quality ?? null;
+      failureReason = genReport?.error?.message ?? genReport?.failure?.message ?? failureReason;
+    }
+  } catch {}
+  try {
     if (fs.existsSync(reportOut)) {
       const rep = JSON.parse(fs.readFileSync(reportOut, "utf8"));
       warnings = rep?.warnings ?? [];
+      if (!validateOk && Array.isArray(warnings) && warnings.length > 0) {
+        failureReason = warnings.map((w) => w?.message ?? JSON.stringify(w)).join("; ");
+      }
     }
   } catch {}
+  if (!genOk && !failureReason) failureReason = "map generation failed";
 
   // Layer outputs (transparent backgrounds; intended to be stacked/toggled in gallery).
   const thumbPng = path.join(seedDir, "preview_thumb.png");
@@ -106,6 +133,16 @@ for (const seed of seeds) {
   const layerHydrologyPng = path.join(seedDir, "layer_hydrology.png");
   const layerMacroPng = path.join(seedDir, "layer_macro.png");
   const layerSeatsPng = path.join(seedDir, "layer_seats.png");
+  const placeholderPaths = [
+    thumbPng,
+    layerMaskPng,
+    layerTerrainPng,
+    layerElevationPng,
+    layerPoliticalPng,
+    layerHydrologyPng,
+    layerMacroPng,
+    layerSeatsPng
+  ];
 
   if (validateOk) {
     const map = JSON.parse(fs.readFileSync(mapOut, "utf8"));
@@ -119,31 +156,26 @@ for (const seed of seeds) {
     // Read mapgen report for macro debug overlays (frontier rails).
     let overlay = null;
     try {
-      const genReportPath = path.join(seedDir, "mapgen_report.json");
-      if (fs.existsSync(genReportPath)) {
-        const genRep = JSON.parse(fs.readFileSync(genReportPath, "utf8"));
-        borderQuality = genRep?.border_quality ?? null;
-        const f = genRep?.remask?.frontier;
-        if (f && (Array.isArray(f.ridge_idx) || Array.isArray(f.river_idx) || Array.isArray(f.ford_idx))) {
-          const ridge = Array.isArray(f.ridge_idx) ? f.ridge_idx : [];
-          const river = Array.isArray(f.river_idx) ? f.river_idx : [];
-          const ford = Array.isArray(f.ford_idx) ? f.ford_idx : [];
-          let tripoint_idx = null;
-          if (ford.length > 0) tripoint_idx = ford[0];
-          else if (ridge.length > 0 && river.length > 0) {
-            const riverSet = new Set(river);
-            const overlap = ridge.find((x) => riverSet.has(x));
-            if (Number.isInteger(overlap)) tripoint_idx = overlap;
-            else tripoint_idx = river[0];
-          } else if (river.length > 0) tripoint_idx = river[0];
-          else if (ridge.length > 0) tripoint_idx = ridge[0];
-          overlay = {
-            ridge_idx: ridge,
-            river_idx: river,
-            ford_idx: ford,
-            tripoint_idx
-          };
-        }
+      const f = genReport?.remask?.frontier;
+      if (f && (Array.isArray(f.ridge_idx) || Array.isArray(f.river_idx) || Array.isArray(f.ford_idx))) {
+        const ridge = Array.isArray(f.ridge_idx) ? f.ridge_idx : [];
+        const river = Array.isArray(f.river_idx) ? f.river_idx : [];
+        const ford = Array.isArray(f.ford_idx) ? f.ford_idx : [];
+        let tripoint_idx = null;
+        if (ford.length > 0) tripoint_idx = ford[0];
+        else if (ridge.length > 0 && river.length > 0) {
+          const riverSet = new Set(river);
+          const overlap = ridge.find((x) => riverSet.has(x));
+          if (Number.isInteger(overlap)) tripoint_idx = overlap;
+          else tripoint_idx = river[0];
+        } else if (river.length > 0) tripoint_idx = river[0];
+        else if (ridge.length > 0) tripoint_idx = ridge[0];
+        overlay = {
+          ridge_idx: ridge,
+          river_idx: river,
+          ford_idx: ford,
+          tripoint_idx
+        };
       }
     } catch {}
 
@@ -160,11 +192,30 @@ for (const seed of seeds) {
     writeLayerPng({ map, ctx, layer: "hydrology", outPath: layerHydrologyPng, overlay });
     writeLayerPng({ map, ctx, layer: "macro", outPath: layerMacroPng, overlay });
     writeLayerPng({ map, ctx, layer: "seats", outPath: layerSeatsPng, overlay });
+  } else {
+    for (const p of placeholderPaths) {
+      writePlaceholderPng({ outPath: p });
+    }
   }
 
   const m = metrics?.counts ?? {};
   const coast = metrics?.coastline ?? {};
   const settlements = m?.settlement_counts ?? {};
+
+  const missingOutput = !(genOk && validateOk && fs.existsSync(mapOut));
+  const requiredArtifacts = [
+    mapOut,
+    thumbPng,
+    layerMaskPng,
+    layerTerrainPng,
+    layerElevationPng,
+    layerPoliticalPng,
+    layerHydrologyPng,
+    layerMacroPng,
+    layerSeatsPng
+  ];
+  const missingArtifacts = requiredArtifacts.filter((p) => !fs.existsSync(p));
+  if (missingArtifacts.length > 0 && !failureReason) failureReason = `missing required artifacts (${missingArtifacts.map((p) => path.basename(p)).join(", ")})`;
 
   summary.seeds.push({
     seed,
@@ -200,15 +251,23 @@ for (const seed of seeds) {
       compactness_avg: metrics?.derived?.county_compactness_avg,
       seat_spacing_min: metrics?.derived?.seat_spacing_min,
       seat_spacing_avg: metrics?.derived?.seat_spacing_avg,
-      border_high_straight_share: borderQuality?.high_straight_share,
-      border_river_adj_share: borderQuality?.river_adj_share,
-      border_ridge_adj_share: borderQuality?.ridge_adj_share,
-      border_quality_pass: borderQuality?.pass
+      border_high_straight_share: borderQuality?.high_straight_share ?? null,
+      border_river_adj_share: borderQuality?.river_adj_share ?? null,
+      border_ridge_adj_share: borderQuality?.ridge_adj_share ?? null,
+      border_quality_pass: borderQuality?.pass ?? null
     },
+    gen_pass: genOk,
     validate_pass: validateOk,
+    missing_output: missingOutput,
+    missing_artifacts: missingArtifacts.map((p) => path.basename(p)),
+    failure_reason: failureReason,
     warnings
   });
 }
+
+summary.success_count = summary.seeds.filter((s) => s.validate_pass === true && s.missing_output !== true).length;
+summary.generation_success_count = summary.seeds.filter((s) => s.gen_pass === true).length;
+summary.failed_seed_count = summary.seeds.length - summary.success_count;
 
 writeJson(path.join(outRoot, "seed_batch_summary.json"), summary);
 
@@ -236,7 +295,8 @@ const html = [
 for (const s of summary.seeds) {
   const rel = (p) => path.relative(outRoot, p).split(path.sep).join("/");
   html.push("<div class='card'>");
-  html.push(`<div class='seed'><span>${s.seed}</span><a href='${rel(s.paths.map)}'>map.json</a></div>`);
+  const mapLink = s.missing_output ? "<span style='color:#a00'>missing output</span>" : `<a href='${rel(s.paths.map)}'>map.json</a>`;
+  html.push(`<div class='seed'><span>${s.seed}</span>${mapLink}</div>`);
 
   html.push("<div class='stack'>");
   // Spacer establishes the size; it is always present but hidden.
@@ -249,7 +309,10 @@ for (const s of summary.seeds) {
   html.push(`<img data-layer='seats' src='${rel(s.paths.layer_seats_png)}' alt='seats'>`);
   html.push(`<img data-layer='macro' style='display:none' src='${rel(s.paths.layer_macro_png)}' alt='macro'>`);
   html.push("</div>");
-  html.push(`<div class='meta'>validate_pass: ${s.validate_pass}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}\nborder_quality_pass: ${s.metrics.border_quality_pass}\nborder_high_straight_share: ${s.metrics.border_high_straight_share}\nborder_river_adj_share: ${s.metrics.border_river_adj_share}\nborder_ridge_adj_share: ${s.metrics.border_ridge_adj_share}</div>`);
+  html.push(`<div class='meta'>gen_pass: ${s.gen_pass}\nvalidate_pass: ${s.validate_pass}\nmissing_output: ${s.missing_output}\ncoast_share: ${s.metrics.coast_share}\nmarket_count: ${s.metrics.market_count}\nland/sea/void: ${s.metrics.land_hexes}/${s.metrics.sea_hexes}/${s.metrics.void_hexes}\nborder_quality_pass: ${s.metrics.border_quality_pass}\nborder_high_straight_share: ${s.metrics.border_high_straight_share}\nborder_river_adj_share: ${s.metrics.border_river_adj_share}\nborder_ridge_adj_share: ${s.metrics.border_ridge_adj_share}</div>`);
+  if (s.failure_reason) {
+    html.push(`<div class='meta'>failure_reason:\n${s.failure_reason}</div>`);
+  }
   if (Array.isArray(s.warnings) && s.warnings.length) {
     html.push(`<div class='meta'>warnings:\n${s.warnings.map(w=>w.message ?? JSON.stringify(w)).join("\n")}</div>`);
   }
